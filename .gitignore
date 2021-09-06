@@ -1,0 +1,7 @@
+build/
+node_modules/
+.secret
+.secret-testnet
+.env
+artifacts
+cache
