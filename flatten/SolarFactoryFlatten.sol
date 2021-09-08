@@ -7,6 +7,7 @@ interface ISolarFactory {
     function feeTo() external view returns (address);
     function feeToSetter() external view returns (address);
     function migrator() external view returns (address);
+    function auro() external view returns (address);
 
     function getPair(address tokenA, address tokenB) external view returns (address pair);
     function allPairs(uint) external view returns (address pair);
@@ -17,6 +18,7 @@ interface ISolarFactory {
     function setFeeTo(address) external;
     function setFeeToSetter(address) external;
     function setMigrator(address) external;
+    function setAuroAddress(address) external;
 }
 
 // a library for performing overflow-safe math, courtesy of DappHub (https://github.com/dapphub/ds-math)
@@ -461,6 +463,7 @@ contract SolarFactory is ISolarFactory {
     address public override feeTo;
     address public override feeToSetter;
     address public override migrator;
+    address public override auro;
 
     mapping(address => mapping(address => address)) public override getPair;
     address[] public override allPairs;
@@ -505,6 +508,12 @@ contract SolarFactory is ISolarFactory {
     function setFeeToSetter(address _feeToSetter) external override {
         require(msg.sender == feeToSetter, 'SolarBeam: FORBIDDEN');
         feeToSetter = _feeToSetter;
+    }
+
+    function setAuroAddress(address _auro) external override {
+        require(msg.sender == feeToSetter, 'SolarBeam: FORBIDDEN');
+        require(_auro != address(0), 'SolarBeam: INVALID_ADDRESS');
+        auro = _auro;
     }
 
     function enableMetaTxnsPair(address pairAddress) external {

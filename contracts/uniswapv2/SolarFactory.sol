@@ -10,6 +10,7 @@ contract SolarFactory is ISolarFactory {
     address public override feeTo;
     address public override feeToSetter;
     address public override migrator;
+    address public override auro;
 
     mapping(address => mapping(address => address)) public override getPair;
     address[] public override allPairs;
@@ -55,6 +56,14 @@ contract SolarFactory is ISolarFactory {
         require(msg.sender == feeToSetter, 'SolarBeam: FORBIDDEN');
         feeToSetter = _feeToSetter;
     }
+
+    
+    function setAuroAddress(address _auro) external override {
+        require(msg.sender == feeToSetter, 'SolarBeam: FORBIDDEN');
+        require(_auro != address(0), 'SolarBeam: INVALID_ADDRESS');
+        auro = _auro;
+    }
+
 
 
     function enableMetaTxnsPair(address pairAddress) external {
