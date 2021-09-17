@@ -8,10 +8,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./ISolarERC20.sol";
 
-contract SolarDistributor is Ownable, ReentrancyGuard {
-    // remember to change for mainnet deploy
+contract SolarVault is Ownable, ReentrancyGuard {
     address constant _trustedForwarder =
-        0x0D0b4862F5FfA3A47D04DDf0351356d20C830460; //TRUSTED FORWARDER
+        0x0D0b4862F5FfA3A47D04DDf0351356d20C830460; //Trusted forwarder
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -203,7 +202,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
 
     // Set farming start, can call only once
     function startFarming() public onlyOwner {
-        require(block.number < startBlock, "Error::Farm started already");
+        require(block.number < startBlock, "Error: farm started already");
 
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
@@ -230,11 +229,11 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
     ) public onlyOwner {
         require(
             _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_RATE,
-            "add: deposit fee too high"
+            "Add: deposit fee too high"
         );
         require(
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
-            "add: invalid harvest interval"
+            "Add: invalid harvest interval"
         );
         if (_withUpdate) {
             massUpdatePools();
@@ -256,6 +255,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             })
         );
     }
+
     // View function to see pending Solar on frontend.
     function pendingSolar(uint256 _pid, address _user)
         external
@@ -285,6 +285,18 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             user.rewardDebt
         );
         return pending.add(user.rewardLockedUp);
+    }
+
+    // View function to see when user will be unlocked from pool
+    function userLockedUntil(uint256 _pid, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        UserInfo storage user = userInfo[_pid][_user];
+        PoolInfo storage pool = poolInfo[_pid];
+
+        return user.lastInteraction + pool.lockupDuration;
     }
 
     // View function to see if user can harvest Solar.
@@ -335,11 +347,11 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to MasterChef for Solar allocation.
+    // Deposit LP tokens to SolarVault for Solar allocation
     function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         require(
             block.number >= startBlock,
-            "SolarDistributor: Can not deposit before start"
+            "SolarVault: cannot deposit before farming start"
         );
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -371,6 +383,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             }
         }
         user.rewardDebt = user.amount.mul(pool.accSolarPerShare).div(1e12);
+        user.lastInteraction = block.timestamp;
         emit Deposit(_msgSender(), _pid, _amount);
     }
 
@@ -380,10 +393,16 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][_msgSender()];
 
         //this will make sure that user can only withdraw from his pool
-        require(user.amount >= _amount, "Withdraw: User amount not enough");
+        require(user.amount >= _amount, "Withdraw: user amount is not enough");
 
         //Cannot withdraw more than pool's balance
-        require(pool.totalLp >= _amount, "Withdraw: Pool total not enough");
+        require(pool.totalLp >= _amount, "Withdraw: pool total is not enough");
+
+        //Cannot withdraw before lock time
+        require(
+            block.timestamp > user.lastInteraction + pool.lockupDuration,
+            "Withdraw: you cannot withdraw yet"
+        );
 
         updatePool(_pid);
 
@@ -398,33 +417,8 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             pool.lpToken.safeTransfer(_msgSender(), _amount);
         }
         user.rewardDebt = user.amount.mul(pool.accSolarPerShare).div(1e12);
+        user.lastInteraction = block.timestamp;
         emit Withdraw(_msgSender(), _pid, _amount);
-    }
-
-    // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public nonReentrant {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        uint256 amount = user.amount;
-
-        //Cannot withdraw more than pool's balance
-        require(
-            pool.totalLp >= amount,
-            "EmergencyWithdraw: Pool total not enough"
-        );
-
-        user.amount = 0;
-        user.rewardDebt = 0;
-        user.rewardLockedUp = 0;
-        user.nextHarvestUntil = 0;
-        pool.totalLp = pool.totalLp.sub(amount);
-
-        if (address(pool.lpToken) == address(solar)) {
-            totalSolarInPools = totalSolarInPools.sub(amount);
-        }
-        pool.lpToken.safeTransfer(_msgSender(), amount);
-
-        emit EmergencyWithdraw(_msgSender(), _pid, amount);
     }
 
     // Pay or lockup pending Solar.
@@ -448,6 +442,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
                     user.rewardLockedUp
                 );
                 user.rewardLockedUp = 0;
+                user.lastInteraction = block.timestamp;
                 user.nextHarvestUntil = block.timestamp.add(
                     pool.harvestInterval
                 );
@@ -457,6 +452,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
+            user.lastInteraction = block.timestamp;
             totalLockedUpRewards = totalLockedUpRewards.add(pending);
             emit RewardLockedUp(_msgSender(), _pid, pending);
         }
@@ -465,7 +461,7 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
     // Safe Solar transfer function, just in case if rounding error causes pool do not have enough Solar.
     function safeSolarTransfer(address _to, uint256 _amount) internal {
         if (solar.balanceOf(address(this)) > totalSolarInPools) {
-            //SolarBal = total Solar in SolarDistributor - total Solar in Solar pools, this will make sure that SolarDistributor never transfer rewards from deposited Solar pools
+            //SolarBal = total Solar in SolarVault - total Solar in Solar pools, this will make sure that SolarVault never transfer rewards from deposited Solar pools
             uint256 SolarBal = solar.balanceOf(address(this)).sub(
                 totalSolarInPools
             );
@@ -527,7 +523,10 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
 
     // Enable support for meta transactions
     function enableMetaTxns() public onlyOperator {
-        require(!metaTxnsEnabled, "Meta transactions are already enabled");
+        require(
+            !metaTxnsEnabled,
+            "SolarVault: meta transactions are already enabled"
+        );
 
         metaTxnsEnabled = true;
         emit MetaTxnsEnabled(_msgSender());
@@ -535,7 +534,10 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
 
     // Disable support for meta transactions
     function disableMetaTxns() public onlyOperator {
-        require(metaTxnsEnabled, "Meta transactions are already disabled");
+        require(
+            metaTxnsEnabled,
+            "SolarVault: meta transactions are already disabled"
+        );
 
         metaTxnsEnabled = false;
         emit MetaTxnsDisabled(_msgSender());

@@ -1,6 +1,7 @@
 require("dotenv/config");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-ethers");
 require("hardhat-deploy");
 require("hardhat-deploy-ethers");
 require("./tasks");
