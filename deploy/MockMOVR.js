@@ -5,12 +5,12 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
   
     const { deployer } = await getNamedAccounts();
   
-    await deploy("Timelock", {
+    await deploy("MockMOVR", {
       from: deployer,
-      args: [deployer, 21600],
+      args: ['MockMOVR','MOCKMOVR','10000000000000000000000'],
       log: true,
       deterministicDeployment: false,
     });
   };
   
-  module.exports.tags = ["Timelock"];
+  module.exports.tags = ["MockMOVR"];

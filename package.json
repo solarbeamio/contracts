@@ -15,5 +15,8 @@
     "hardhat": "^2.5.0",
     "hardhat-deploy": "^0.8.11",
     "hardhat-deploy-ethers": "^0.3.0-beta.10"
+  },
+  "dependencies": {
+    "@boringcrypto/boring-solidity": "git+https://github.com/boringcrypto/BoringSolidity.git"
   }
 }

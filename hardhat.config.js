@@ -43,6 +43,16 @@ module.exports = {
             gasPrice: 1000000000,
             gas: 8000000,
         },
+        moonbase: {
+          url: `https://rpc.testnet.moonbeam.network`,
+          chainId: 1287,
+          accounts,
+          live: true,
+          saveDeployments: true,
+          tags: ["moonbase"],
+          gasPrice: 1000000000,
+          gas: 8000000,
+      },
     },
     solidity: {
         compilers: [
