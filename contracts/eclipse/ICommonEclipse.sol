@@ -5,7 +5,6 @@ pragma solidity ^0.8.7;
  * @notice It is an interface for CommonEclipse.sol
  */
 abstract contract ICommonEclipse {
-
     /**
      * @notice It sets parameters for pool
      * @param _offeringAmountPool: offering amount (in tokens)
@@ -42,7 +41,9 @@ abstract contract ICommonEclipse {
      * @param _startBlock: block number sale starts
      * @param _endBlock: block number sale ends
      */
-    function updateStartAndEndBlocks(uint256 _startBlock, uint256 _endBlock) external virtual;
+    function updateStartAndEndBlocks(uint256 _startBlock, uint256 _endBlock)
+        external
+        virtual;
 
     /**
      * @notice It allows owner to set the multiplier information
@@ -50,13 +51,15 @@ abstract contract ICommonEclipse {
      * @dev encoded args are (uint8,uint8,uint8,uint8[2][3],uint8[2][3],uint8[2][3])
      * (0 decimals)
      */
-    function setMulitpliers(bytes memory _multipliers) public virtual;
+    function setMultipliers(bytes memory _multipliers) public virtual;
 
     /**
      * @notice It allows owner to set the threshold for eligibility
      * @param _eligibilityThreshold: amount of solar staked in vaults to be eligibile
      */
-    function setEligibilityThreshold(uint256 _eligibilityThreshold) public virtual;
+    function setEligibilityThreshold(uint256 _eligibilityThreshold)
+        public
+        virtual;
 
     /**
      * @notice It allows the admin to withdraw funds
@@ -64,29 +67,51 @@ abstract contract ICommonEclipse {
      * @param _offerAmount: the number of offering amount to withdraw
      * @dev This function is only callable by owner.
      */
-    function finalWithdraw(uint256 _lpAmount, uint256 _offerAmount) external virtual;
+    function finalWithdraw(uint256 _lpAmount, uint256 _offerAmount)
+        external
+        virtual;
+
     /**
      * @notice It returns the tax overflow rate calculated for a pool
      * @dev 100,000,000,000 means 0.1 (10%) / 1 means 0.0000000000001 (0.0000001%) / 1,000,000,000,000 means 1 (100%)
      * @param _pid: poolId
      * @return It returns the tax percentage
      */
-    function viewPoolTaxRateOverflow(uint256 _pid) external virtual returns (uint256);
+    function viewPoolTaxRateOverflow(uint256 _pid)
+        external
+        virtual
+        returns (uint256);
+
     /**
      * @notice External view function to see user allocations for both pools
      * @param _user: user address
      * @param _pids[]: array of pids
      */
-    function viewUserAllocationPools(address _user, uint8[] calldata _pids) external virtual returns (uint256[] memory);
+    function viewUserAllocationPools(address _user, uint8[] calldata _pids)
+        external
+        virtual
+        returns (uint256[] memory);
 
     /**
      * @notice External view function to see user offering and refunding amounts for both pools
      * @param _user: user address
      * @param _pids: array of pids
      */
-    function viewUserOfferingAndRefundingAmountsForPools(address _user, uint8[] calldata _pids)
-        external
-        virtual
-        returns (uint256[3][] memory);
-}
+    function viewUserOfferingAndRefundingAmountsForPools(
+        address _user,
+        uint8[] calldata _pids
+    ) external virtual returns (uint256[3][] memory);
 
+    /**
+     * @notice It allows users to withdraw LP tokens to pool
+     * @param _amount: the number of LP token used (18 decimals)
+     * @param _pid: pool id
+     */
+    function withdrawPool(uint256 _amount, uint8 _pid) external virtual;
+
+    /**
+     * @notice It allows the admin to end sale and start claim
+     * @dev This function is only callable by owner.
+     */
+    function enableClaim() external virtual;
+}

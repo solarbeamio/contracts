@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -57,8 +57,6 @@ contract NFTClaim is Ownable, ReentrancyGuard {
         uint256[] calldata _amount
     ) external onlyOwner {
         require(_whitelist.length == _amount.length, Errors.C1);
-
-        CampaignInfo storage campaign = campaignInfo[_campaignID];
 
         for (uint256 i = 0; i < _whitelist.length; i++) {
             UserInfo storage user = userInfo[_campaignID][_whitelist[i]];

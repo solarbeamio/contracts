@@ -44,15 +44,15 @@ module.exports = {
             gas: 8000000,
         },
         moonbase: {
-          url: `https://rpc.testnet.moonbeam.network`,
-          chainId: 1287,
-          accounts,
-          live: true,
-          saveDeployments: true,
-          tags: ["moonbase"],
-          gasPrice: 1000000000,
-          gas: 8000000,
-      },
+            url: `https://rpc.testnet.moonbeam.network`,
+            chainId: 1287,
+            accounts,
+            live: true,
+            saveDeployments: true,
+            tags: ["moonbase"],
+            gasPrice: 1000000000,
+            gas: 8000000,
+        },
     },
     solidity: {
         compilers: [
@@ -66,7 +66,7 @@ module.exports = {
                 },
             },
             {
-                version: "0.8.2",
+                version: "0.8.7",
                 settings: {
                     optimizer: {
                         enabled: true,
