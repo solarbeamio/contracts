@@ -40,7 +40,7 @@ module.exports = {
             live: true,
             saveDeployments: true,
             tags: ["moonriver"],
-            gasPrice: 1000000000,
+            gasPrice: 5000000000,
             gas: 8000000,
         },
         moonbase: {
@@ -58,6 +58,15 @@ module.exports = {
         compilers: [
             {
                 version: "0.6.12",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 999999,
+                    },
+                },
+            },
+            {
+                version: "0.8.2",
                 settings: {
                     optimizer: {
                         enabled: true,

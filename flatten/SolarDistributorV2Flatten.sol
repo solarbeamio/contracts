@@ -1,4 +1,9 @@
+// Sources flattened with hardhat v2.6.0 https://hardhat.org
+
+// File @openzeppelin/contracts/utils/Context.sol@v4.2.0
+
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 /*
@@ -87,6 +92,7 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
+
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
@@ -355,6 +361,7 @@ library Address {
 }
 
 
+
 interface IBoringERC20 {
     function mint(address to, uint256 amount) external;
 
@@ -388,6 +395,7 @@ interface IBoringERC20 {
     ) external;
 }
 
+
 interface IRewarder {
     function onSolarReward(address user, uint256 newLpAmount) external;
 
@@ -398,6 +406,7 @@ interface IRewarder {
 
     function rewardToken() external view returns (IBoringERC20);
 }
+
 
 // solhint-disable avoid-low-level-calls
 library BoringERC20 {
@@ -508,6 +517,7 @@ library BoringERC20 {
     }
 }
 
+
 contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     using BoringERC20 for IBoringERC20;
 
@@ -523,7 +533,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     struct PoolInfo {
         IBoringERC20 lpToken; // Address of LP token contract.
         uint256 allocPoint; // How many allocation points assigned to this pool. Solar to distribute per block.
-        uint256 lastRewardBlock; // Last block number that Solar distribution occurs.
+        uint256 lastRewardTimestamp; // Last block number that Solar distribution occurs.
         uint256 accSolarPerShare; // Accumulated Solar per share, times 1e12. See below.
         uint16 depositFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
@@ -533,8 +543,8 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
     IBoringERC20 public solar;
 
-    // Solar tokens created per block
-    uint256 public solarPerBlock;
+    // Solar tokens created per second
+    uint256 public solarPerSec;
 
     // Max harvest interval: 14 days
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
@@ -551,8 +561,8 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
 
-    // The block number when Solar mining starts.
-    uint256 public startBlock;
+    // The timestamp when Solar mining starts.
+    uint256 public startTimestamp;
 
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
@@ -579,7 +589,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     uint256 public investorPercent;
 
     modifier validatePoolByPid(uint256 _pid) {
-        require(_pid < poolInfo.length, "Pool does not exist");
+        require(_pid < poolInfo.length, "invalid pool");
         _;
     }
 
@@ -600,6 +610,13 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         IRewarder[] indexed rewarders
     );
 
+    event UpdatePool(
+        uint256 indexed pid,
+        uint256 lastRewardTimestamp,
+        uint256 lpSupply,
+        uint256 accSolarPerShare
+    );
+
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
 
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -612,8 +629,8 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
     event EmissionRateUpdated(
         address indexed caller,
-        uint256 previousAmount,
-        uint256 newAmount
+        uint256 previousValue,
+        uint256 newValue
     );
 
     event RewardLockedUp(
@@ -651,7 +668,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
     constructor(
         IBoringERC20 _solar,
-        uint256 _solarPerBlock,
+        uint256 _solarPerSec,
         address _teamAddress,
         address _treasuryAddress,
         address _investorAddress,
@@ -676,11 +693,11 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             "constructor: total percent over max"
         );
 
-        //StartBlock always many years later from contract construct, will be set later in StartFarming function
-        startBlock = block.number + (10 * 365 * 24 * 60 * 60);
+        //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
+        startTimestamp = block.timestamp + (60 * 60 * 24 * 365);
 
         solar = _solar;
-        solarPerBlock = _solarPerBlock;
+        solarPerSec = _solarPerSec;
 
         teamAddress = _teamAddress;
         treasuryAddress = _treasuryAddress;
@@ -691,29 +708,20 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         investorPercent = _investorPercent;
     }
 
-    // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to)
-        public
-        pure
-        returns (uint256)
-    {
-        return _to - _from;
-    }
-
     // Set farming start, can call only once
     function startFarming() public onlyOwner {
         require(
-            block.number < startBlock,
-            "startFarming: farm started already"
+            block.timestamp < startTimestamp,
+            "start farming: farm started already"
         );
 
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
             PoolInfo storage pool = poolInfo[pid];
-            pool.lastRewardBlock = block.number;
+            pool.lastRewardTimestamp = block.timestamp;
         }
 
-        startBlock = block.number;
+        startTimestamp = block.timestamp;
     }
 
     function poolLength() external view returns (uint256) {
@@ -755,9 +763,9 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
         massUpdatePools();
 
-        uint256 lastRewardBlock = block.number > startBlock
-            ? block.number
-            : startBlock;
+        uint256 lastRewardTimestamp = block.timestamp > startTimestamp
+            ? block.timestamp
+            : startTimestamp;
 
         totalAllocPoint = totalAllocPoint + _allocPoint;
 
@@ -765,7 +773,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             PoolInfo({
                 lpToken: _lpToken,
                 allocPoint: _allocPoint,
-                lastRewardBlock: lastRewardBlock,
+                lastRewardTimestamp: lastRewardTimestamp,
                 accSolarPerShare: 0,
                 depositFeeBP: _depositFeeBP,
                 harvestInterval: _harvestInterval,
@@ -823,6 +831,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         poolInfo[_pid].depositFeeBP = _depositFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
         poolInfo[_pid].rewarders = _rewarders;
+
         emit Set(
             _pid,
             _allocPoint,
@@ -848,14 +857,15 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         uint256 accSolarPerShare = pool.accSolarPerShare;
         uint256 lpSupply = pool.totalLp;
 
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(
-                pool.lastRewardBlock,
-                block.number
-            );
+        if (block.number > pool.lastRewardTimestamp && lpSupply != 0) {
+            uint256 multiplier = block.timestamp - pool.lastRewardTimestamp;
+            uint256 lpPercent = 1000 -
+                teamPercent -
+                treasuryPercent -
+                investorPercent;
 
-            uint256 solarReward = ((multiplier * solarPerBlock) *
-                pool.allocPoint) / totalAllocPoint;
+            uint256 solarReward = ((((multiplier * solarPerSec) *
+                pool.allocPoint) / totalAllocPoint) * lpPercent) / 1000;
 
             accSolarPerShare =
                 accSolarPerShare +
@@ -892,6 +902,24 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         }
     }
 
+    // View function to see rewarders for a pool
+    function poolRewarders(uint256 _pid)
+        external
+        view
+        validatePoolByPid(_pid)
+        returns (address[] memory rewarders)
+    {
+        PoolInfo storage pool = poolInfo[_pid];
+
+        for (
+            uint256 rewarderId = 0;
+            rewarderId < pool.rewarders.length;
+            ++rewarderId
+        ) {
+            rewarders[rewarderId] = address(pool.rewarders[rewarderId]);
+        }
+    }
+
     // View function to see if user can harvest Solar.
     function canHarvest(uint256 _pid, address _user)
         public
@@ -901,7 +929,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     {
         UserInfo storage user = userInfo[_pid][_user];
         return
-            block.number >= startBlock &&
+            block.timestamp >= startTimestamp &&
             block.timestamp >= user.nextHarvestUntil;
     }
 
@@ -917,20 +945,20 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     function updatePool(uint256 _pid) public validatePoolByPid(_pid) {
         PoolInfo storage pool = poolInfo[_pid];
 
-        if (block.number <= pool.lastRewardBlock) {
+        if (block.timestamp <= pool.lastRewardTimestamp) {
             return;
         }
 
         uint256 lpSupply = pool.totalLp;
 
         if (lpSupply == 0 || pool.allocPoint == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.lastRewardTimestamp = block.timestamp;
             return;
         }
 
-        uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        uint256 multiplier = block.timestamp - pool.lastRewardTimestamp;
 
-        uint256 solarReward = ((multiplier * solarPerBlock) * pool.allocPoint) /
+        uint256 solarReward = ((multiplier * solarPerSec) * pool.allocPoint) /
             totalAllocPoint;
 
         uint256 lpPercent = 1000 -
@@ -947,7 +975,14 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             pool.accSolarPerShare +
             (((solarReward * 1e12) / pool.totalLp) * lpPercent) /
             1000;
-        pool.lastRewardBlock = block.number;
+        pool.lastRewardTimestamp = block.timestamp;
+
+        emit UpdatePool(
+            _pid,
+            pool.lastRewardTimestamp,
+            lpSupply,
+            pool.accSolarPerShare
+        );
     }
 
     // Deposit tokens for Solar allocation.
@@ -997,7 +1032,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw tokens
+    //withdraw tokens
     function withdraw(uint256 _pid, uint256 _amount)
         public
         nonReentrant
@@ -1009,7 +1044,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         //this will make sure that user can only withdraw from his pool
         require(user.amount >= _amount, "withdraw: user amount not enough");
 
-        //Cannot withdraw more than pool's balance
+        //cannot withdraw more than pool's balance
         require(pool.totalLp >= _amount, "withdraw: pool total not enough");
 
         updatePool(_pid);
@@ -1069,7 +1104,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
 
-        if (user.nextHarvestUntil == 0 && block.number >= startBlock) {
+        if (user.nextHarvestUntil == 0 && block.timestamp >= startTimestamp) {
             user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
         }
 
@@ -1112,12 +1147,12 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         }
     }
 
-    function updateEmissionRate(uint256 _solarPerBlock) public onlyOwner {
+    function updateEmissionRate(uint256 _solarPerSec) public onlyOwner {
         massUpdatePools();
 
-        emit EmissionRateUpdated(msg.sender, solarPerBlock, _solarPerBlock);
+        emit EmissionRateUpdated(msg.sender, solarPerSec, _solarPerSec);
 
-        solarPerBlock = _solarPerBlock;
+        solarPerSec = _solarPerSec;
     }
 
     function updateAllocPoint(uint256 _pid, uint256 _allocPoint)

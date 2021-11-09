@@ -150,3 +150,25 @@ task("eclipse:setPoolsOfficial", "Eclipse: Set Pools").setAction(async function 
     console.log(`Setting Pool 1 - Unlimited Sale`);
     await eclipse.setPool(totalRaiseLP, offeringAmount, 0, true, 1);
 });
+
+task("timelock:setAdmin", "timelock: setAdmin").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
+    const eclipse = await getContract("Timelock");
+    const offeringToken = await eclipse.admin();
+    console.log(offeringToken);
+});
+
+task("timelock:queuedTransactions", "timelock: queuedTransactions").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
+    const factory = await getContractFactory("Timelock");
+    const timelock = await factory.attach("0xB256C57AA0778a184D26D3B7c033dB950c7bF007");
+
+    const queued = await timelock.queuedTransactions("0x54c437ae2bee6177b726e46862d05190ab0b724f34a7a47c4cc15c42689d1c83");
+    console.log(queued);
+});
+
+task("timelock:balance", "timelock: balance").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
+    const factory = await getContractFactory("Timelock");
+    const timelock = await factory.attach("0xB256C57AA0778a184D26D3B7c033dB950c7bF007");
+
+    const queued = await timelock.provider.getBalance("0x16F50e8067B92F78783278139A4972adC76A15ac");
+    console.log(queued.toString());
+});
