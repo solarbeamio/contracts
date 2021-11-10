@@ -75,7 +75,7 @@ task("eclipse:setPoolsFinal", "Eclipse: Set Pools").setAction(async function ({}
 
     const raise = 50000;
     const offeringPrice = 3;
-    const lpPrice = 205; //REAL LP PRICE AT TIME
+    const lpPrice = 205;
     const base = 100;
     const e18 = BigNumber.from(10).pow(18);
 

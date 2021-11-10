@@ -1,6 +1,5 @@
 const { task } = require("hardhat/config");
 
-const deployer = "0xb152C1746543FdC63b308808497B64F52774f805";
 const distributorAddr = "0xf03b75831397D4695a6b9dDdEEA0E578faa30907";
 const farms = {
     "0x7eDA899b3522683636746a2f3a7814e6fFca75e1": {
