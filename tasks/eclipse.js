@@ -48,31 +48,6 @@ task("eclipse:setMultipliers", "Eclipse: Set Multipliers").setAction(async funct
     await eclipse.setMultipliers(multipliers);
 });
 
-task("eclipse:getUserMultiplier", "Eclipse: Get User Multiplier").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
-    const eclipse = await getContract("CommonEclipse");
-    const address = "0xb152C1746543FdC63b308808497B64F52774f805";
-    const e18 = BigNumber.from(10).pow(18);
-
-    const multiplier = await eclipse.getUserMultiplier(address);
-    console.log(multiplier.toString());
-});
-
-task("eclipse:viewUserAllocationPools", "Eclipse: View User Allocation Pools").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
-    const eclipse = await getContract("CommonEclipse");
-    const address = "0xb152C1746543FdC63b308808497B64F52774f805";
-    const e18 = BigNumber.from(10).pow(18);
-
-    /**
-     * @notice External view function to see user allocations for both pools
-     * @param _user: user address
-     * @param _pids[]: array of pids
-     * @return (uint256[] memory)
-     */
-    const [pool1, pool2] = await eclipse.viewUserAllocationPools(address, [0, 1]);
-    console.log(pool1.toString());
-    console.log(pool2.toString());
-});
-
 task("eclipse:updateStartAndEndBlocks", "Eclipse: Update Start And End Blocks").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
     const eclipse = await getContract("CommonEclipse");
 
@@ -82,25 +57,6 @@ task("eclipse:updateStartAndEndBlocks", "Eclipse: Update Start And End Blocks").
 
     console.log(`Updating StartAndEndBlocks`);
     await eclipse.updateStartAndEndBlocks(correctStartBlock, correctEndBlock);
-});
-
-task("eclipse:poolInfo", "Eclipse: Pool Info").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
-    const eclipse = await getContract("CommonEclipse");
-
-    const poolInfo = await eclipse.poolInfo(0);
-    console.log(poolInfo);
-});
-
-task("mockMOVR:mint", "mockMOVR: mint").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
-    const erc20 = await getContractFactory("MockERC20");
-    const movr = await erc20.attach("0x579E6E41dEAEed8F65768E161A0FD63D760Cae5c");
-    await movr.mint("0xb152C1746543FdC63b308808497B64F52774f805", "100000000000000000000000");
-});
-
-task("mockERC20:mint", "mockERC20: mint").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
-    const erc20 = await getContractFactory("MockERC20");
-    const movr = await erc20.attach("0x46F79Cca5350E95F30e3F17b6D35CE360bd4EAAB");
-    await movr.mint("0xb152C1746543FdC63b308808497B64F52774f805", "4000000000000000000000000");
 });
 
 task("eclipse:enableClaim", "Eclipse: EnableClaim").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
@@ -113,18 +69,7 @@ task("eclipse:setOfferingToken", "Eclipse: Set Offering Token").setAction(async 
     await eclipse.setOfferingToken("0x1e0F2A75Be02c025Bd84177765F89200c04337Da");
 });
 
-task("eclipse:finalWithdraw", "Eclipse: Final Withdraw").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
-    const eclipse = await getContract("CommonEclipse");
-    await eclipse.finalWithdraw("10000000000000000000", "0");
-});
-
-task("eclipse:getOfferingToken", "Eclipse: Get Offering Token").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
-    const eclipse = await getContract("CommonEclipse");
-    const offeringToken = await eclipse.offeringToken();
-    console.log(offeringToken);
-});
-
-task("eclipse:setPoolsOfficial", "Eclipse: Set Pools").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
+task("eclipse:setPoolsFinal", "Eclipse: Set Pools").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
     const factory = await getContractFactory("CommonEclipse");
     const eclipse = await factory.attach("0x022Bcb66662Bb3854b6f16bAbD4c13BFa3dB0b08");
 
@@ -149,26 +94,4 @@ task("eclipse:setPoolsOfficial", "Eclipse: Set Pools").setAction(async function 
 
     console.log(`Setting Pool 1 - Unlimited Sale`);
     await eclipse.setPool(totalRaiseLP, offeringAmount, 0, true, 1);
-});
-
-task("timelock:setAdmin", "timelock: setAdmin").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
-    const eclipse = await getContract("Timelock");
-    const offeringToken = await eclipse.admin();
-    console.log(offeringToken);
-});
-
-task("timelock:queuedTransactions", "timelock: queuedTransactions").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
-    const factory = await getContractFactory("Timelock");
-    const timelock = await factory.attach("0xB256C57AA0778a184D26D3B7c033dB950c7bF007");
-
-    const queued = await timelock.queuedTransactions("0x54c437ae2bee6177b726e46862d05190ab0b724f34a7a47c4cc15c42689d1c83");
-    console.log(queued);
-});
-
-task("timelock:balance", "timelock: balance").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
-    const factory = await getContractFactory("Timelock");
-    const timelock = await factory.attach("0xB256C57AA0778a184D26D3B7c033dB950c7bF007");
-
-    const queued = await timelock.provider.getBalance("0x16F50e8067B92F78783278139A4972adC76A15ac");
-    console.log(queued.toString());
 });

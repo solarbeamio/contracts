@@ -3,12 +3,15 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     const { deployer, dev } = await getNamedAccounts();
 
-    const mockSolar = "0x46F79Cca5350E95F30e3F17b6D35CE360bd4EAAB";
+    const solarToken = "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B";
+    const solarPerSec = "";
+    const teamAddress = "";
+    const treasuryAddress = "";
+    const investorAddress = "";
 
-    //1,000 SOLAR/DAY
     await deploy("SolarDistributorV2", {
         from: deployer,
-        args: [mockSolar, "1574074074074075", deployer, deployer, deployer, 100, 100, 100],
+        args: [solarToken, solarPerSec, teamAddress, treasuryAddress, investorAddress, 100, 100, 100],
         log: true,
         deterministicDeployment: false,
     });

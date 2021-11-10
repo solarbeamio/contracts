@@ -8,25 +8,6 @@ module.exports = async function ({ getNamedAccounts, deployments, ethers }) {
 
     const abi = ethers.utils.defaultAbiCoder;
 
-    // IERC20 _lpToken,
-    // IERC20 _offeringToken,
-    // uint256 _startBlock,
-    // uint256 _endBlock,
-    // uint256 _vestingBlockOffset, // Number of Blocks to offset for each harvest period
-    // uint256 _eligibilityThreshold, // (1e18)
-    // address _solarVault,
-    // uint256[] memory _harvestReleasePercent,
-    // bytes memory _multipliers
-
-    //   struct Multipliers {
-    //     uint16[NUMBER_THRESHOLDS] poolThresholds;
-    //     uint8[NUMBER_VAULT_POOLS] poolBaseMult;
-    //     uint8[NUMBER_THRESHOLDS][NUMBER_VAULT_POOLS] poolMultipliers;
-    // }
-    // uint16[] memory thresholds,
-    // uint8[] memory base,
-    // uint8[][] memory mults
-
     const MOVRSOLAR = "0x7eDA899b3522683636746a2f3a7814e6fFca75e1";
     const PETS = "0x1e0F2A75Be02c025Bd84177765F89200c04337Da";
 
