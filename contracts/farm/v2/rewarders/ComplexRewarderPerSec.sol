@@ -21,8 +21,8 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     using BoringERC20 for IBoringERC20;
 
     IBoringERC20 public immutable override rewardToken;
-    bool public immutable isNative;
     ISolarDistributorV2 public immutable distributorV2;
+    bool public immutable isNative;
 
     /// @notice Info of each distributorV2 user.
     /// `amount` LP token amount the user has provided.
@@ -30,7 +30,6 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     struct UserInfo {
         uint256 amount;
         uint256 rewardDebt;
-        uint256 unpaidRewards;
     }
 
     /// @notice Info of each distributorV2 poolInfo.
@@ -192,28 +191,22 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         uint256 pending;
         uint256 rewardBalance = _balance();
         if (user.amount > 0) {
-            pending =
-                (((user.amount * pool.accTokenPerShare) / ACC_TOKEN_PRECISION) -
-                    user.rewardDebt) +
-                user.unpaidRewards;
+            pending = (((user.amount * pool.accTokenPerShare) /
+                ACC_TOKEN_PRECISION) - user.rewardDebt);
 
             if (isNative) {
                 if (pending > rewardBalance) {
                     (bool success, ) = _user.call{value: rewardBalance}("");
                     require(success, "Transfer failed");
-                    user.unpaidRewards = pending - rewardBalance;
                 } else {
                     (bool success, ) = _user.call{value: pending}("");
                     require(success, "Transfer failed");
-                    user.unpaidRewards = 0;
                 }
             } else {
                 if (pending > rewardBalance) {
                     rewardToken.safeTransfer(_user, rewardBalance);
-                    user.unpaidRewards = pending - rewardBalance;
                 } else {
                     rewardToken.safeTransfer(_user, pending);
-                    user.unpaidRewards = 0;
                 }
             }
         }
@@ -222,7 +215,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             (user.amount * pool.accTokenPerShare) /
             ACC_TOKEN_PRECISION;
 
-        emit OnReward(_user, pending - user.unpaidRewards);
+        emit OnReward(_user, pending);
     }
 
     /// @notice View function to see pending tokens
@@ -249,10 +242,8 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             accTokenPerShare += (tokenReward * ACC_TOKEN_PRECISION) / lpSupply;
         }
 
-        pending =
-            (((user.amount * accTokenPerShare) / ACC_TOKEN_PRECISION) -
-                user.rewardDebt) +
-            user.unpaidRewards;
+        pending = (((user.amount * accTokenPerShare) / ACC_TOKEN_PRECISION) -
+            user.rewardDebt);
     }
 
     /// @notice In case rewarder is stopped before emissions finished, this function allows
@@ -279,7 +270,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         returns (uint256)
     {
         PoolInfo storage pool = poolInfo[_pid];
-        return (pool.allocPoint / totalAllocPoint) * tokenPerSec;
+        return (pool.allocPoint * tokenPerSec) / totalAllocPoint;
     }
 
     /// @notice View function to see balance of reward token.

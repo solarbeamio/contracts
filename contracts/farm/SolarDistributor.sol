@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./ISolarERC20.sol";
 
 contract SolarDistributor is Ownable, ReentrancyGuard {
-
     // remember to change for mainnet deploy
-    address constant _trustedForwarder = 0x0D0b4862F5FfA3A47D04DDf0351356d20C830460; //TRUSTED FORWARDER
+    address constant _trustedForwarder =
+        0x0D0b4862F5FfA3A47D04DDf0351356d20C830460; //TRUSTED FORWARDER
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -77,28 +77,54 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
     // Control support for EIP-2771 Meta Transactions
     bool public metaTxnsEnabled = false;
 
-
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmissionRateUpdated(address indexed caller, uint256 previousAmount, uint256 newAmount);
-    event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
-    event OperatorTransferred(address indexed previousOperator, address indexed newOperator);
-    event DevAddressChanged(address indexed caller, address oldAddress, address newAddress);
-    event FeeAddressChanged(address indexed caller, address oldAddress, address newAddress);
-    event AllocPointsUpdated(address indexed caller, uint256 previousAmount, uint256 newAmount);
+    event EmergencyWithdraw(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amount
+    );
+    event EmissionRateUpdated(
+        address indexed caller,
+        uint256 previousAmount,
+        uint256 newAmount
+    );
+    event RewardLockedUp(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amountLockedUp
+    );
+    event OperatorTransferred(
+        address indexed previousOperator,
+        address indexed newOperator
+    );
+    event DevAddressChanged(
+        address indexed caller,
+        address oldAddress,
+        address newAddress
+    );
+    event FeeAddressChanged(
+        address indexed caller,
+        address oldAddress,
+        address newAddress
+    );
+    event AllocPointsUpdated(
+        address indexed caller,
+        uint256 previousAmount,
+        uint256 newAmount
+    );
     event MetaTxnsEnabled(address indexed caller);
     event MetaTxnsDisabled(address indexed caller);
 
     modifier onlyOperator() {
-        require(_operator == msg.sender, "Operator: caller is not the operator");
+        require(
+            _operator == msg.sender,
+            "Operator: caller is not the operator"
+        );
         _;
     }
 
-    constructor(
-        ISolarERC20 _solar,
-        uint256 _solarPerBlock
-    ) {
+    constructor(ISolarERC20 _solar, uint256 _solarPerBlock) {
         //StartBlock always many years later from contract construct, will be set later in StartFarming function
         startBlock = block.number + (10 * 365 * 24 * 60 * 60);
 
@@ -111,11 +137,22 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         emit OperatorTransferred(address(0), _operator);
     }
 
-    function isTrustedForwarder(address forwarder) public view virtual returns (bool) {
+    function isTrustedForwarder(address forwarder)
+        public
+        view
+        virtual
+        returns (bool)
+    {
         return metaTxnsEnabled && forwarder == _trustedForwarder;
     }
 
-    function _msgSender() internal view virtual override returns (address sender) {
+    function _msgSender()
+        internal
+        view
+        virtual
+        override
+        returns (address sender)
+    {
         if (isTrustedForwarder(msg.sender)) {
             // The assembly code is more direct than the Solidity version using `abi.decode`.
             assembly {
@@ -126,7 +163,13 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         }
     }
 
-    function _msgData() internal view virtual override returns (bytes calldata) {
+    function _msgData()
+        internal
+        view
+        virtual
+        override
+        returns (bytes calldata)
+    {
         if (isTrustedForwarder(msg.sender)) {
             return msg.data[:msg.data.length - 20];
         } else {
@@ -139,12 +182,19 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to)
+        public
+        pure
+        returns (uint256)
+    {
         return _to.sub(_from);
     }
 
     function transferOperator(address newOperator) public onlyOperator {
-        require(newOperator != address(0), "TransferOperator: new operator is the zero address");
+        require(
+            newOperator != address(0),
+            "TransferOperator: new operator is the zero address"
+        );
         emit OperatorTransferred(_operator, newOperator);
         _operator = newOperator;
     }
@@ -175,14 +225,32 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
-        require(_depositFeeBP <= MAXIMUM_DEPOSIT_FEE_RATE, "add: deposit fee too high");
-        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
+        require(
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_RATE,
+            "add: deposit fee too high"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+        uint256 lastRewardBlock = block.number > startBlock
+            ? block.number
+            : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        poolInfo.push(PoolInfo({lpToken: _lpToken, allocPoint: _allocPoint, lastRewardBlock: lastRewardBlock, accSolarPerShare: 0, depositFeeBP: _depositFeeBP, harvestInterval: _harvestInterval, totalLp: 0}));
+        poolInfo.push(
+            PoolInfo({
+                lpToken: _lpToken,
+                allocPoint: _allocPoint,
+                lastRewardBlock: lastRewardBlock,
+                accSolarPerShare: 0,
+                depositFeeBP: _depositFeeBP,
+                harvestInterval: _harvestInterval,
+                totalLp: 0
+            })
+        );
     }
 
     // Update the given pool's Solar allocation point and deposit fee. Can only be called by the owner.
@@ -193,38 +261,66 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
-        require(_depositFeeBP <= MAXIMUM_DEPOSIT_FEE_RATE, "set: deposit fee too high");
-        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "set: invalid harvest interval");
+        require(
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_RATE,
+            "set: deposit fee too high"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "set: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
+            _allocPoint
+        );
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].depositFeeBP = _depositFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
     }
 
     // View function to see pending Solar on frontend.
-    function pendingSolar(uint256 _pid, address _user) external view returns (uint256) {
+    function pendingSolar(uint256 _pid, address _user)
+        external
+        view
+        returns (uint256)
+    {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSolarPerShare = pool.accSolarPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 solarReward = multiplier.mul(solarPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accSolarPerShare = accSolarPerShare.add(solarReward.mul(1e12).div(lpSupply));
+            uint256 multiplier = getMultiplier(
+                pool.lastRewardBlock,
+                block.number
+            );
+            uint256 solarReward = multiplier
+                .mul(solarPerBlock)
+                .mul(pool.allocPoint)
+                .div(totalAllocPoint);
+            accSolarPerShare = accSolarPerShare.add(
+                solarReward.mul(1e12).div(lpSupply)
+            );
         }
 
-        uint256 pending = user.amount.mul(accSolarPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accSolarPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         return pending.add(user.rewardLockedUp);
     }
 
     // View function to see if user can harvest Solar.
-    function canHarvest(uint256 _pid, address _user) public view returns (bool) {
+    function canHarvest(uint256 _pid, address _user)
+        public
+        view
+        returns (bool)
+    {
         UserInfo storage user = userInfo[_pid][_user];
-        return block.number >= startBlock && block.timestamp >= user.nextHarvestUntil;
+        return
+            block.number >= startBlock &&
+            block.timestamp >= user.nextHarvestUntil;
     }
 
     // Update reward vairables for all pools. Be careful of gas spending!
@@ -249,10 +345,10 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         }
 
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 solarReward =
-            multiplier.mul(solarPerBlock).mul(pool.allocPoint).div(
-                totalAllocPoint
-            );
+        uint256 solarReward = multiplier
+            .mul(solarPerBlock)
+            .mul(pool.allocPoint)
+            .div(totalAllocPoint);
 
         solar.mint(devAddress, solarReward.div(10));
         solar.mint(address(this), solarReward);
@@ -261,13 +357,14 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             solarReward.mul(1e12).div(pool.totalLp)
         );
         pool.lastRewardBlock = block.number;
-
-
     }
 
     // Deposit LP tokens to MasterChef for Solar allocation.
     function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
-        require(block.number >= startBlock, "SolarDistributor: Can not deposit before start");
+        require(
+            block.number >= startBlock,
+            "SolarDistributor: Can not deposit before start"
+        );
 
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_msgSender()];
@@ -335,7 +432,10 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
         uint256 amount = user.amount;
 
         //Cannot withdraw more than pool's balance
-        require(pool.totalLp >= amount, "EmergencyWithdraw: Pool total not enough");
+        require(
+            pool.totalLp >= amount,
+            "EmergencyWithdraw: Pool total not enough"
+        );
 
         user.amount = 0;
         user.rewardDebt = 0;
@@ -360,15 +460,21 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
 
-        uint256 pending = user.amount.mul(pool.accSolarPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accSolarPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         if (canHarvest(_pid, _msgSender())) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
 
                 // reset lockup
-                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                totalLockedUpRewards = totalLockedUpRewards.sub(
+                    user.rewardLockedUp
+                );
                 user.rewardLockedUp = 0;
-                user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+                user.nextHarvestUntil = block.timestamp.add(
+                    pool.harvestInterval
+                );
 
                 // send rewards
                 safeSolarTransfer(_msgSender(), totalRewards);
@@ -384,7 +490,9 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
     function safeSolarTransfer(address _to, uint256 _amount) internal {
         if (solar.balanceOf(address(this)) > totalSolarInPools) {
             //SolarBal = total Solar in SolarDistributor - total Solar in Solar pools, this will make sure that SolarDistributor never transfer rewards from deposited Solar pools
-            uint256 SolarBal = solar.balanceOf(address(this)).sub(totalSolarInPools);
+            uint256 SolarBal = solar.balanceOf(address(this)).sub(
+                totalSolarInPools
+            );
             if (_amount >= SolarBal) {
                 solar.transfer(_to, SolarBal);
             } else if (_amount > 0) {
@@ -429,9 +537,15 @@ contract SolarDistributor is Ownable, ReentrancyGuard {
             massUpdatePools();
         }
 
-        emit AllocPointsUpdated(_msgSender(), poolInfo[_pid].allocPoint, _allocPoint);
+        emit AllocPointsUpdated(
+            _msgSender(),
+            poolInfo[_pid].allocPoint,
+            _allocPoint
+        );
 
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
+            _allocPoint
+        );
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
