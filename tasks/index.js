@@ -1,7 +1,7 @@
 const { task } = require("hardhat/config");
 require("./eclipse");
-require("./farmsv2");
 require("./farms");
+require("./burner");
 
 task("accounts", "Prints the list of accounts", require("./accounts"));
 task("gas-price", "Prints gas price").setAction(async function ({ address }, { ethers }) {

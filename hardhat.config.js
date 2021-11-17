@@ -20,7 +20,7 @@ if (process.env.PRIVATE_KEY) {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-    defaultNetwork: "moonriver",
+    defaultNetwork: "hardhat",
     namedAccounts: {
         deployer: {
             default: 0,
@@ -28,11 +28,30 @@ module.exports = {
         dev: {
             default: 1,
         },
+        treasury: {
+            default: 1,
+        },
+        investor: {
+            default: 2,
+        },
     },
     etherscan: {
         apiKey: process.env.ETHERSCAN_API_KEY,
     },
+    mocha: {
+        timeout: 200000,
+    },
     networks: {
+        hardhat: {
+            forking: {
+                enabled: true,
+                url: "https://rpc.moonriver.moonbeam.network",
+                blockNumber: 900000,
+            },
+            live: false,
+            saveDeployments: true,
+            tags: ["test", "local"],
+        },
         moonriver: {
             url: `https://rpc.moonriver.moonbeam.network`,
             chainId: 1285,

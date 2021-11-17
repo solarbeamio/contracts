@@ -1,6 +1,8 @@
 build/
 node_modules/
 deployments/
+tasks/
+deploy/
 .secret
 .secret-testnet
 .env

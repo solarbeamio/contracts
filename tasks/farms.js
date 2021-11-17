@@ -376,19 +376,65 @@ const farms = {
     },
 };
 
-task("farms:startFarming", "farmsv2: startFarming").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+task("farms:startFarming", "SolarDistributorV2: startFarming").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
     const farms = await getContract("SolarDistributorV2");
     await farms.startFarming();
 });
 
-task("farms:add", "farmsv2: add solar pool with movr rewards").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+task("farms:init", "SolarDistributorV2: init").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
     const farms = await getContract("SolarDistributorV2");
-    const rewarder = await getContract("ComplexRewarderPerSec");
-    const solarAddress = "";
-    await farms.add("10000", solarAddress, 0, 15, [rewarder.address]);
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    const mock = await getContractFactory("MockERC20");
+    const mockToken = mock.attach("0xef5632D36ba3D98E322083bf854A21a29e777975");
+    // const stakingToken = "0x7eDA899b3522683636746a2f3a7814e6fFca75e1";
+    // const stakingToken2 = "0xe537f70a8b62204832B8Ba91940B77d3f79AEb81";
+    // await (await farms.startFarming()).wait();
+
+    // await (await farms.add("10000", stakingToken, 0, 15, [rewarder.address])).wait();
+    // await (await farms.add("5000", stakingToken2, 0, 15, [rewarder.address])).wait();
+    // await (await farms.set(0, "10000", 0, 15, [rewarder.address])).wait();
+    // await (await farms.set(1, "5000", 0, 15, [rewarder.address])).wait();
+    // await (await rewarder.add(0, "10000")).wait();
+    // await (await rewarder.add(1, "10000")).wait();
+
+    await (await mockToken.mint("0xb152C1746543FdC63b308808497B64F52774f805", "900000000000000000000")).wait();
+    await (await mockToken.approve(rewarder.address, "900000000000000000000")).wait();
+    await (await rewarder.addRewards("900000000000000000000")).wait();
 });
 
-task("farms:allocations", "farmsv2: allocations").setAction(async function ({}, { ethers: { getContract, getAddress, getContractFactory, BigNumber } }) {
+task("rewarder:add-pool", "ComplexRewarderPerSecV2: add a pool").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    await rewarder.add(0, "10000");
+});
+
+task("rewarder:setRewardRate", "ComplexRewarderPerSecV2: set rewards rate").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    await rewarder.setRewardRate("2000000000000000000");
+});
+
+task("rewarder:endTimestamp", "ComplexRewarderPerSecV2: endTimestamp").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    console.log((await rewarder.endTimestamp()).toString());
+});
+
+task("rewarder:setEndTimestamp", "ComplexRewarderPerSecV2: endTimestamp").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    await (await rewarder.setEndTimestamp(1636860038)).wait();
+});
+
+task("rewarder:emergencyWithdraw", "ComplexRewarderPerSecV2: endTimestamp").setAction(async function ({}, { ethers: { getContract, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    await (await rewarder.emergencyWithdraw()).wait();
+});
+
+task("mock:mint", "mock: mint").setAction(async function ({}, { ethers: { getContract, getContractFactory, BigNumber } }) {
+    const rewarder = await getContract("ComplexRewarderPerSecV2");
+    const mock = await getContractFactory("MockERC20");
+    const mockToken = mock.attach("0xef5632D36ba3D98E322083bf854A21a29e777975");
+    await (await mockToken.mint(rewarder.address, "3583333333333333333333")).wait();
+});
+
+task("farms:allocations", "farms: allocations").setAction(async function ({}, { ethers: { getContract, getAddress, getContractFactory, BigNumber } }) {
     const distributorContract = await getContractFactory("SolarDistributor");
     const distributor = await distributorContract.attach(distributorAddr);
 

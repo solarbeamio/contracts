@@ -1,22 +1,27 @@
 {
-  "name": "solarbeam-contracts",
-  "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT",
-  "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-etherscan": "^2.1.4",
-    "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@openzeppelin/contracts": "^4.2.0",
-    "chai": "^4.3.4",
-    "dotenv": "^10.0.0",
-    "ethereum-waffle": "^3.4.0",
-    "ethers": "^5.4.6",
-    "hardhat": "^2.5.0",
-    "hardhat-deploy": "^0.8.11",
-    "hardhat-deploy-ethers": "^0.3.0-beta.10"
-  },
-  "dependencies": {
-    "@boringcrypto/boring-solidity": "git+https://github.com/boringcrypto/BoringSolidity.git"
-  }
+    "name": "solarbeam-contracts",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "test": "hardhat test",
+        "test:coverage": "cross-env NODE_OPTIONS=\"--max-old-space-size=2048\" hardhat coverage",
+        "test:gas": "cross-env REPORT_GAS=true yarn test"
+    },
+    "devDependencies": {
+        "@nomiclabs/hardhat-ethers": "^2.0.2",
+        "@nomiclabs/hardhat-etherscan": "^2.1.4",
+        "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "@openzeppelin/contracts": "^4.2.0",
+        "@types/mocha": "^8.2.1",
+        "@types/node": "^14.14.31",
+        "chai": "^4.3.4",
+        "dotenv": "^10.0.0",
+        "ethereum-waffle": "^3.4.0",
+        "ethers": "^5.4.6",
+        "hardhat": "^2.5.0",
+        "hardhat-deploy": "^0.8.11",
+        "hardhat-deploy-ethers": "^0.3.0-beta.10",
+        "@boringcrypto/boring-solidity": "git+https://github.com/boringcrypto/BoringSolidity.git"
+    }
 }
