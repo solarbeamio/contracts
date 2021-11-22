@@ -260,10 +260,6 @@ contract ComplexRewarderPerSecV2 is IComplexRewarder, Ownable, ReentrancyGuard {
         rewardInfo.endTimestamp = _endTimestamp;
 
         if (newPendingRewards > pendingRewards) {
-            //need to add more funds due to increasing rewards per sec
-            //eg: pendingRewards = 40 tokens per sec * 10 (timerange) = 400
-            //eg: newPendingRewards = 50 tokens per sec * 10 (timerange) = 500
-            //eg: amount to add = newPendingRewards - pendingRewards = 500 - 400 = 100
             uint256 amount = newPendingRewards - pendingRewards;
             pool.totalRewards += amount;
 
@@ -276,10 +272,6 @@ contract ComplexRewarderPerSecV2 is IComplexRewarder, Ownable, ReentrancyGuard {
                 );
             }
         } else {
-            //withdraw rewards back to beneficiary due to reducing rewards per sec
-            //eg: pendingRewards = 60 tokens per sec * 10 (timerange) = 600
-            //eg: newPendingRewards = 10 tokens per sec * 10 (timerange) = 100
-            //eg: amount to refund = pendingRewards - newPendingRewards = 500
             uint256 amount = pendingRewards - newPendingRewards;
             pool.totalRewards -= amount;
             if (!isNative) {

@@ -718,12 +718,14 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         if (canHarvest(_pid, msg.sender)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 // reset lockup
+                uint256 pendingRewards = pending + user.rewardLockedUp;
+
                 totalLockedUpRewards -= user.rewardLockedUp;
                 user.rewardLockedUp = 0;
                 user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
 
                 // send rewards
-                safeSolarTransfer(msg.sender, pending + user.rewardLockedUp);
+                safeSolarTransfer(msg.sender, pendingRewards);
             }
         } else if (pending > 0) {
             totalLockedUpRewards += pending;
@@ -781,8 +783,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     function harvestMany(uint256[] calldata _pids) public nonReentrant {
         require(_pids.length <= 30, "harvest many: too many pool ids");
         for (uint256 index = 0; index < _pids.length; ++index) {
-            // check if pool exists
-            if (index < poolInfo.length) {
+            if (_pids[index] < poolInfo.length) {
                 _deposit(_pids[index], 0);
             }
         }
