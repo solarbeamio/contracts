@@ -312,7 +312,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         ) {
             require(
                 Address.isContract(address(_rewarders[rewarderId])),
-                "add: rewarder must be contract"
+                "set: rewarder must be contract"
             );
         }
 
@@ -428,7 +428,16 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         addresses[0] = address(solar);
         symbols[0] = IBoringERC20(solar).safeSymbol();
         decimals[0] = IBoringERC20(solar).safeDecimals();
-        rewardsPerSec[0] = (pool.allocPoint * solarPerSec) / totalAllocPoint;
+
+        uint256 lpPercent = 1000 -
+            teamPercent -
+            treasuryPercent -
+            investorPercent;
+
+        rewardsPerSec[0] =
+            (((pool.allocPoint * solarPerSec) / totalAllocPoint) * lpPercent) /
+            1000;
+
         for (
             uint256 rewarderId = 0;
             rewarderId < pool.rewarders.length;
@@ -460,7 +469,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         returns (address[] memory rewarders)
     {
         PoolInfo storage pool = poolInfo[_pid];
-
+        rewarders = new address[](pool.rewarders.length);
         for (
             uint256 rewarderId = 0;
             rewarderId < pool.rewarders.length;
@@ -717,9 +726,9 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
         if (canHarvest(_pid, msg.sender)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
-                // reset lockup
                 uint256 pendingRewards = pending + user.rewardLockedUp;
 
+                // reset lockup
                 totalLockedUpRewards -= user.rewardLockedUp;
                 user.rewardLockedUp = 0;
                 user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
@@ -783,9 +792,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
     function harvestMany(uint256[] calldata _pids) public nonReentrant {
         require(_pids.length <= 30, "harvest many: too many pool ids");
         for (uint256 index = 0; index < _pids.length; ++index) {
-            if (_pids[index] < poolInfo.length) {
-                _deposit(_pids[index], 0);
-            }
+            _deposit(_pids[index], 0);
         }
     }
 
@@ -831,7 +838,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             teamPercent + _newTreasuryPercent + investorPercent <= 1000,
             "set treasury percent: total percent over max"
         );
-        emit SetTeamPercent(treasuryPercent, _newTreasuryPercent);
+        emit SetTreasuryPercent(treasuryPercent, _newTreasuryPercent);
         treasuryPercent = _newTreasuryPercent;
     }
 
@@ -854,7 +861,7 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             teamPercent + _newInvestorPercent + treasuryPercent <= 1000,
             "set investor percent: total percent over max"
         );
-        emit SetTeamPercent(investorPercent, _newInvestorPercent);
+        emit SetInvestorPercent(investorPercent, _newInvestorPercent);
         investorPercent = _newInvestorPercent;
     }
 }

@@ -258,7 +258,7 @@ describe("SolarDistributorV2", function () {
         });
     });
 
-    context.only("rewarder", function () {
+    context("rewarder", function () {
         beforeEach(async function () {
             this.partnerToken = await this.ERC20Mock.deploy("Reward", "RWD", "10000000000");
             await this.partnerToken.transfer(this.deployer.address, "1000");
@@ -488,7 +488,7 @@ describe("SolarDistributorV2", function () {
             expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(40);
         });
 
-        it.only("should reward partner token accurately with 1 reward info after rewards run out", async function () {
+        it("should reward partner token accurately with 1 reward info after rewards run out", async function () {
             this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
             await this.sdv2.deployed();
             await this.sdv2.startFarming();

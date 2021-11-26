@@ -3,15 +3,16 @@ pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-contract MockERC20 is ERC20 {
+contract MockERC20 is ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
 
     constructor(
         string memory name,
         string memory symbol,
         uint256 totalSupply
-    ) ERC20(name, symbol) {
+    ) ERC20(name, symbol) ERC20Permit(name) {
         _mint(msg.sender, totalSupply);
     }
 
