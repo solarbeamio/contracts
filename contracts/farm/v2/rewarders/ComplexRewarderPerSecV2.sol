@@ -2,7 +2,6 @@
 pragma solidity ^0.8.2;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -219,68 +218,6 @@ contract ComplexRewarderPerSecV2 is IComplexRewarder, Ownable, ReentrancyGuard {
             _endTimestamp,
             _rewardPerSec
         );
-    }
-
-    function setRewardInfo(
-        uint256 _pid,
-        uint256 _rid,
-        uint256 _endTimestamp,
-        uint256 _rewardPerSec,
-        address _beneficiary
-    ) external payable onlyOwner {
-        PoolInfo memory pool = poolInfo[_pid];
-        RewardInfo storage rewardInfo = poolRewardInfo[_pid][_rid];
-
-        require(
-            rewardInfo.startTimestamp > 0,
-            "update reward info: reward info not found"
-        );
-
-        require(
-            rewardInfo.endTimestamp >= block.timestamp,
-            "update reward info: reward period ended"
-        );
-
-        require(
-            _endTimestamp >= rewardInfo.startTimestamp &&
-                _endTimestamp >= block.timestamp,
-            "update reward info: invalid endTimestamp"
-        );
-
-        uint256 startTimestamp = block.timestamp >= rewardInfo.startTimestamp
-            ? block.timestamp
-            : rewardInfo.startTimestamp;
-
-        uint256 timeRange = rewardInfo.endTimestamp - startTimestamp;
-        uint256 pendingRewards = timeRange * rewardInfo.rewardPerSec;
-        uint256 newTimeRange = _endTimestamp - startTimestamp;
-        uint256 newPendingRewards = newTimeRange * _rewardPerSec;
-
-        rewardInfo.rewardPerSec = _rewardPerSec;
-        rewardInfo.endTimestamp = _endTimestamp;
-
-        if (newPendingRewards > pendingRewards) {
-            uint256 amount = newPendingRewards - pendingRewards;
-            pool.totalRewards += amount;
-
-            if (!isNative) {
-                rewardToken.safeTransferFrom(msg.sender, address(this), amount);
-            } else {
-                require(
-                    msg.value == amount,
-                    "update reward info: not enough funds to transfer"
-                );
-            }
-        } else {
-            uint256 amount = pendingRewards - newPendingRewards;
-            pool.totalRewards -= amount;
-            if (!isNative) {
-                rewardToken.safeTransfer(_beneficiary, amount);
-            } else {
-                (bool sent, ) = _beneficiary.call{value: amount}("");
-                require(sent, "update reward info: failed to send");
-            }
-        }
     }
 
     function _endTimestampOf(uint256 _pid, uint256 _timestamp)

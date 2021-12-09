@@ -85,7 +85,7 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
         uint8[NUMBER_VAULT_POOLS] poolBaseMultiplier,
         uint8[NUMBER_THRESHOLDS][NUMBER_VAULT_POOLS] poolStakedMultipliers
         );
-    event AdminWithdraw(uint256 amountLP, uint256 amountOfferingToken);
+    event EmergencyWithdraw(uint256 amountLP, uint256 amountOfferingToken);
     event FinalWithdraw(WITHDRAW_TYPE _type, uint256 amountLP, uint8 indexed pid);
     event AdminTokenRecovery(address token, uint256 amount);
     event ClaimEnabled();
@@ -125,8 +125,8 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
         uint256[] memory _harvestReleaseTimestamps,
         bytes memory _multipliers
     ){
-        require(_lpToken.totalSupply() >= 0);
-        require(_offeringToken.totalSupply() >= 0);
+        require(_lpToken.totalSupply() > 0);
+        require(_offeringToken.totalSupply() > 0);
         require(_lpToken != _offeringToken, "Tokens must be different");
 
         lpToken = _lpToken;
@@ -267,28 +267,6 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
         emit NewStartAndEndBlocks(_startTimestamp, _endTimestamp);
     }
     /**
-     * @notice It allows the owner to withdraw LPtokens and Offering tokens
-     * @dev can only withdraw after the sale is finished
-     * @param _lpAmount: amount of LP token to withdraw
-     * @param _offerAmount: amount of IDO tokens to withdraw
-     */
-    function adminWithdraw(uint256 _lpAmount, uint256 _offerAmount) external onlyOwner {
-        require(block.timestamp > endTimestamp, "sale has not finished");
-        require(_lpAmount <= lpToken.balanceOf(address(this)), "Not enough LP tokens");
-        require(_offerAmount <= offeringToken.balanceOf(address(this)), "Not enough offering tokens");
-
-        if (_lpAmount > 0) {
-            lpToken.safeTransfer(address(msg.sender), _lpAmount);
-        }
-
-        if (_offerAmount > 0) {
-            offeringToken.safeTransfer(address(msg.sender), _offerAmount);
-        }
-
-        emit AdminWithdraw(_lpAmount, _offerAmount);
-    }
-
-    /**
      * @notice It withdraws raisingAmount + taxes for a pool
      * @dev can only withdraw after the sale is finished
      * @param _type: withdraw type
@@ -309,6 +287,30 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
 
         emit FinalWithdraw(_type, amount, _pid);
     }
+    
+    /**
+     * @notice It allows the owner to withdraw LPtokens and Offering tokens, emergency only
+     * @dev can only withdraw after the sale is finished
+     * @param _lpAmount: amount of LP token to withdraw
+     * @param _offerAmount: amount of IDO tokens to withdraw
+     */
+    function emergencyWithdraw(uint256 _lpAmount, uint256 _offerAmount) external onlyOwner {
+        require(block.timestamp > endTimestamp, "sale has not finished");
+        require(_lpAmount <= lpToken.balanceOf(address(this)), "Not enough LP tokens");
+        require(_offerAmount <= offeringToken.balanceOf(address(this)), "Not enough offering tokens");
+
+        if (_lpAmount > 0) {
+            lpToken.safeTransfer(address(msg.sender), _lpAmount);
+        }
+
+        if (_offerAmount > 0) {
+            offeringToken.safeTransfer(address(msg.sender), _offerAmount);
+        }
+
+        emit EmergencyWithdraw(_lpAmount, _offerAmount);
+    }
+
+
     /**
      * @notice It allows the owner to withdraw ERC20 tokens
      * @dev cannot withdraw LP tokens or offering tokens
@@ -353,7 +355,11 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
         (bool success) = _getEligibility();
         require(success, "user not eligible");
 
+        uint256 beforeDeposit = lpToken.balanceOf(address(this));
         lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+        uint256 afterDeposit = lpToken.balanceOf(address(this));
+        
+        _amount = afterDeposit - beforeDeposit;
 
         user.amount += _amount;
 
