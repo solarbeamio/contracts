@@ -170,15 +170,15 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         uint256 _investorPercent
     ) {
         require(
-            0 <= _teamPercent && _teamPercent <= 1000,
+            _teamPercent <= 1000,
             "constructor: invalid team percent value"
         );
         require(
-            0 <= _treasuryPercent && _treasuryPercent <= 1000,
+            _treasuryPercent <= 1000,
             "constructor: invalid treasury percent value"
         );
         require(
-            0 <= _investorPercent && _investorPercent <= 1000,
+            _investorPercent <= 1000,
             "constructor: invalid investor percent value"
         );
         require(
@@ -356,13 +356,18 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
 
         if (block.timestamp > pool.lastRewardTimestamp && lpSupply != 0) {
             uint256 multiplier = block.timestamp - pool.lastRewardTimestamp;
-            uint256 lpPercent = 1000 -
+            uint256 total = 1000;
+            uint256 lpPercent = total -
                 teamPercent -
                 treasuryPercent -
                 investorPercent;
 
-            uint256 solarReward = ((((multiplier * solarPerSec) *
-                pool.allocPoint) / totalAllocPoint) * lpPercent) / 1000;
+            uint256 solarReward = (multiplier *
+                solarPerSec *
+                pool.allocPoint *
+                lpPercent) /
+                totalAllocPoint /
+                total;
 
             accSolarPerShare += (
                 ((solarReward * ACC_TOKEN_PRECISION) / lpSupply)
@@ -429,14 +434,16 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         symbols[0] = IBoringERC20(solar).safeSymbol();
         decimals[0] = IBoringERC20(solar).safeDecimals();
 
-        uint256 lpPercent = 1000 -
+        uint256 total = 1000;
+        uint256 lpPercent = total -
             teamPercent -
             treasuryPercent -
             investorPercent;
 
         rewardsPerSec[0] =
-            (((pool.allocPoint * solarPerSec) / totalAllocPoint) * lpPercent) /
-            1000;
+            (pool.allocPoint * solarPerSec * lpPercent) /
+            totalAllocPoint /
+            total;
 
         for (
             uint256 rewarderId = 0;
@@ -529,19 +536,21 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
         uint256 solarReward = ((multiplier * solarPerSec) * pool.allocPoint) /
             totalAllocPoint;
 
-        uint256 lpPercent = 1000 -
+        uint256 total = 1000;
+        uint256 lpPercent = total -
             teamPercent -
             treasuryPercent -
             investorPercent;
 
-        solar.mint(teamAddress, (solarReward * teamPercent) / 1000);
-        solar.mint(treasuryAddress, (solarReward * treasuryPercent) / 1000);
-        solar.mint(investorAddress, (solarReward * investorPercent) / 1000);
-        solar.mint(address(this), (solarReward * lpPercent) / 1000);
+        solar.mint(teamAddress, (solarReward * teamPercent) / total);
+        solar.mint(treasuryAddress, (solarReward * treasuryPercent) / total);
+        solar.mint(investorAddress, (solarReward * investorPercent) / total);
+        solar.mint(address(this), (solarReward * lpPercent) / total);
 
         pool.accSolarPerShare +=
-            (((solarReward * ACC_TOKEN_PRECISION) / pool.totalLp) * lpPercent) /
-            1000;
+            (solarReward * ACC_TOKEN_PRECISION * lpPercent) /
+            pool.totalLp /
+            total;
 
         pool.lastRewardTimestamp = block.timestamp;
 
@@ -802,13 +811,17 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             msg.sender == teamAddress,
             "set team address: only previous team address can call this method"
         );
+        require(
+            _teamAddress != address(0),
+            "set team address: invalid new team address"
+        );
         teamAddress = _teamAddress;
         emit SetTeamAddress(msg.sender, _teamAddress);
     }
 
     function setTeamPercent(uint256 _newTeamPercent) public onlyOwner {
         require(
-            0 <= _newTeamPercent && _newTeamPercent <= 1000,
+            _newTeamPercent <= 1000,
             "set team percent: invalid percent value"
         );
         require(
@@ -825,13 +838,17 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             msg.sender == treasuryAddress,
             "set treasury address: only previous treasury address can call this method"
         );
+        require(
+            _treasuryAddress != address(0),
+            "set treasury address: invalid new treasury address"
+        );
         treasuryAddress = _treasuryAddress;
         emit SetTreasuryAddress(msg.sender, _treasuryAddress);
     }
 
     function setTreasuryPercent(uint256 _newTreasuryPercent) public onlyOwner {
         require(
-            0 <= _newTreasuryPercent && _newTreasuryPercent <= 1000,
+            _newTreasuryPercent <= 1000,
             "set treasury percent: invalid percent value"
         );
         require(
@@ -848,13 +865,17 @@ contract SolarDistributorV2 is Ownable, ReentrancyGuard {
             msg.sender == investorAddress,
             "set investor address: only previous investor can call this method"
         );
+        require(
+            _investorAddress != address(0),
+            "set investor address: invalid new investor address"
+        );
         investorAddress = _investorAddress;
         emit SetInvestorAddress(msg.sender, _investorAddress);
     }
 
     function setInvestorPercent(uint256 _newInvestorPercent) public onlyOwner {
         require(
-            0 <= _newInvestorPercent && _newInvestorPercent <= 1000,
+            _newInvestorPercent <= 1000,
             "set investor percent: invalid percent value"
         );
         require(

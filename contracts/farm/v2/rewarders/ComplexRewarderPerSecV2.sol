@@ -564,7 +564,7 @@ contract ComplexRewarderPerSecV2 is IComplexRewarder, Ownable, ReentrancyGuard {
         uint256 lpSupply = distributorV2.poolTotalLp(_pid);
 
         uint256 currentStakingPendingReward = _pendingTokens(_pid, lpSupply, 0);
-        
+
         require(
             currentStakingPendingReward + _amount <= pool.totalRewards,
             "emergency reward withdraw: not enough reward token"

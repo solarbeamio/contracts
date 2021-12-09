@@ -141,6 +141,11 @@ describe("SolarDistributorV2", function () {
             await this.lp.transfer(this.alice.address, "1000");
             await this.lp.transfer(this.bob.address, "1000");
             await this.lp.transfer(this.carol.address, "1000");
+
+            this.lp2 = await this.ERC20Mock.deploy("LPToken2", "LP2", "10000000000");
+            await this.lp2.transfer(this.alice.address, "1000");
+            await this.lp2.transfer(this.bob.address, "1000");
+            await this.lp2.transfer(this.carol.address, "1000");
         });
 
         it("should distribute SOLAR properly for each staker", async function () {
@@ -255,6 +260,55 @@ describe("SolarDistributorV2", function () {
             expect(await this.lp.balanceOf(this.alice.address)).to.equal("1000");
             expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000");
             expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000");
+        });
+
+        it("should give proper SOLAR allocation to each pool", async function () {
+            this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
+            await this.sdv2.deployed(); // t-59, b=14
+
+            await this.lp.connect(this.alice).approve(this.sdv2.address, "1000", { from: this.alice.address }); // t-55, b=18
+            await this.lp2.connect(this.bob).approve(this.sdv2.address, "1000", { from: this.bob.address }); // t-54, b=19
+            // Add first LP to the pool with allocation 10
+            await this.sdv2.add("10", this.lp.address, 0, 0, []);
+
+            await this.sdv2.startFarming();
+
+            //1s
+            await this.sdv2.connect(this.alice).deposit(0, "10", { from: this.alice.address }); // t+10, b=22
+            // Add LP2 to the pool with allocation 20 at t+20
+            await advanceTimeAndBlock(9); // t+19, b=23
+            await this.sdv2.add("20", this.lp2.address, 0, 0, []);
+            // Alice's pending reward should be:
+            //   - 10*50 = 500 (+50) SolarBeamToken
+            expect((await this.sdv2.pendingTokens(0, this.alice.address)).amounts[0]).to.be.within(500 - this.tokenOffset, 550 + this.tokenOffset);
+
+            await advanceTimeAndBlock(4); // t+24, b=25
+            await this.sdv2.connect(this.bob).deposit(1, "10", { from: this.bob.address }); // t+25, b=26
+            // Alice's pending reward should be:
+            //   - 500 + 5*1/3*50 = 583 (+50) SolarBeamToken
+            expect((await this.sdv2.pendingTokens(0, this.alice.address)).amounts[0]).to.be.within(583 - this.tokenOffset, 633 + this.tokenOffset);
+
+            // At this point:
+            //   Alice's pending reward should be:
+            //     - 583 + 5*1/3*50 = 666 (+50) SolarBeamToken
+            // Bob's pending reward should be:
+            //     - 5*2/3*50 = 166 (+50) SolarBeamToken
+            await advanceTimeAndBlock(5); // t+30, b=27
+            expect((await this.sdv2.pendingTokens(0, this.alice.address)).amounts[0]).to.be.within(666 - this.tokenOffset, 716 + this.tokenOffset);
+            expect((await this.sdv2.pendingTokens(1, this.bob.address)).amounts[0]).to.be.within(166 - this.tokenOffset, 216 + this.tokenOffset);
+            expect((await this.sdv2.pendingTokens(1, this.alice.address)).amounts[0]).to.equal("0");
+            expect((await this.sdv2.pendingTokens(0, this.bob.address)).amounts[0]).to.equal("0");
+
+            // Make sure they have receive the same amount as what was pending
+            await this.sdv2.connect(this.alice).withdraw(0, "10", { from: this.alice.address }); // t+31, b=28
+            // Alice should have:
+            //   - 666 + 1*1/3*50 = 682 (+50) SolarBeamToken
+            expect(await this.solar.balanceOf(this.alice.address)).to.be.within(682 - this.tokenOffset, 732 + this.tokenOffset);
+
+            await this.sdv2.connect(this.bob).withdraw(1, "5", { from: this.bob.address }); // t+32, b=29
+            // Bob should have:
+            //   - 166 + 2*2/3*50 = 232 (+50) SolarBeamToken
+            expect(await this.solar.balanceOf(this.bob.address)).to.be.within(232 - this.tokenOffset, 282 + this.tokenOffset);
         });
     });
 
@@ -1019,76 +1073,6 @@ describe("SolarDistributorV2", function () {
     //         expect(await this.lp.balanceOf(this.alice.address)).to.equal("1000");
     //         expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000");
     //         expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000");
-    //     });
-
-    //     it("should give proper JOEs allocation to each pool", async function () {
-    //         const startTime = (await latest()).add(60);
-    //         this.chef = await this.MCV2.deploy(this.solar.address, this.dev.address, this.treasury.address, this.investor.address, this.solarPerSec, startTime, this.devPercent, this.treasuryPercent, this.investorPercent);
-    //         await this.chef.deployed(); // t-59, b=14
-
-    //         this.rewarder = await this.SimpleRewarderPerBlock.deploy(this.partnerToken.address, this.lp.address, this.partnerRewardPerBlock, this.chef.address);
-    //         await this.rewarder.deployed(); // t-58, b=15
-
-    //         await this.partnerToken.mint(this.rewarder.address, "1000000000000000000000000"); // t-57, b=16
-
-    //         await this.solar.transferOwnership(this.chef.address); // t-56, b=17
-
-    //         await this.lp.connect(this.alice).approve(this.chef.address, "1000", { from: this.alice.address }); // t-55, b=18
-    //         await this.lp2.connect(this.bob).approve(this.chef.address, "1000", { from: this.bob.address }); // t-54, b=19
-    //         // Add first LP to the pool with allocation 10
-    //         await this.chef.add("10", this.lp.address, this.rewarder.address); // t-53, b=20
-    //         // Alice deposits 10 LPs at t+10
-    //         await advanceTimeAndBlock(62); // t+9, b=21
-    //         await this.chef.connect(this.alice).deposit(0, "10", { from: this.alice.address }); // t+10, b=22
-    //         // Add LP2 to the pool with allocation 20 at t+20
-    //         await advanceTimeAndBlock(9); // t+19, b=23
-    //         await this.chef.add("20", this.lp2.address, ADDRESS_ZERO); // t+20, b=24
-    //         // Alice's pending reward should be:
-    //         //   - 10*50 = 500 (+50) SolarBeamToken
-    //         //   - 2*40 = 80 PartnerToken
-    //         expect((await this.chef.pendingTokens(0, this.alice.address)).pendingJoe).to.be.within(500 - this.tokenOffset, 550 + this.tokenOffset);
-    //         expect(await this.rewarder.pendingTokens(this.alice.address)).to.equal(80);
-    //         // Bob deposits 10 LP2s at t+25
-    //         await advanceTimeAndBlock(4); // t+24, b=25
-    //         await this.chef.connect(this.bob).deposit(1, "10", { from: this.bob.address }); // t+25, b=26
-    //         // Alice's pending reward should be:
-    //         //   - 500 + 5*1/3*50 = 583 (+50) SolarBeamToken
-    //         //   - 80 + 2*40 = 160 PartnerToken
-    //         expect((await this.chef.pendingTokens(0, this.alice.address)).pendingJoe).to.be.within(583 - this.tokenOffset, 633 + this.tokenOffset);
-    //         expect(await this.rewarder.pendingTokens(this.alice.address)).to.equal(160);
-
-    //         // At this point:
-    //         //   Alice's pending reward should be:
-    //         //     - 583 + 5*1/3*50 = 666 (+50) SolarBeamToken
-    //         //     - 160 + 1*40 = 200 PartnerToken
-    //         // Bob's pending reward should be:
-    //         //     - 5*2/3*50 = 166 (+50) SolarBeamToken
-    //         //     - 0 PartnerToken
-    //         await advanceTimeAndBlock(5); // t+30, b=27
-    //         expect((await this.chef.pendingTokens(0, this.alice.address)).pendingJoe).to.be.within(666 - this.tokenOffset, 716 + this.tokenOffset);
-    //         expect(await this.rewarder.pendingTokens(this.alice.address)).to.equal(200);
-
-    //         expect((await this.chef.pendingTokens(1, this.bob.address)).pendingJoe).to.be.within(166 - this.tokenOffset, 216 + this.tokenOffset);
-    //         expect(await this.rewarder.pendingTokens(this.bob.address)).to.equal(0);
-
-    //         // Alice and Bob should not have pending rewards in pools they're not staked in
-    //         expect((await this.chef.pendingTokens(1, this.alice.address)).pendingJoe).to.equal("0");
-    //         expect((await this.chef.pendingTokens(0, this.bob.address)).pendingJoe).to.equal("0");
-
-    //         // Make sure they have receive the same amount as what was pending
-    //         await this.chef.connect(this.alice).withdraw(0, "10", { from: this.alice.address }); // t+31, b=28
-    //         // Alice should have:
-    //         //   - 666 + 1*1/3*50 = 682 (+50) SolarBeamToken
-    //         //   - 200 + 1*40 = 240 PartnerToken
-    //         expect(await this.solar.balanceOf(this.alice.address)).to.be.within(682 - this.tokenOffset, 732 + this.tokenOffset);
-    //         expect(await this.partnerToken.balanceOf(this.alice.address)).to.equal(240);
-
-    //         await this.chef.connect(this.bob).withdraw(1, "5", { from: this.bob.address }); // t+32, b=29
-    //         // Bob should have:
-    //         //   - 166 + 2*2/3*50 = 232 (+50) SolarBeamToken
-    //         //   - 0 PartnerToken
-    //         expect(await this.solar.balanceOf(this.bob.address)).to.be.within(232 - this.tokenOffset, 282 + this.tokenOffset);
-    //         expect(await this.rewarder.pendingTokens(this.bob.address)).to.equal(0);
     //     });
 
     //     it("should give proper JOEs after updating emission rate", async function () {

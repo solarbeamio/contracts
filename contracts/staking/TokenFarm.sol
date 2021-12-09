@@ -19,9 +19,10 @@ contract TokenFarm is Ownable, ReentrancyGuard {
     struct CampaignInfo {
         IBoringERC20 stakingToken; // Address of Staking token contract.
         IBoringERC20 rewardToken; // Address of Reward token contract
+        uint256 precision; //reward token precision
         uint256 startTimestamp; // start timestamp of the campaign
         uint256 lastRewardTimestamp; // Last timestamp that Reward Token distribution occurs.
-        uint256 accRewardPerShare; // Accumulated Reward Token per share, times 1e12. See below.
+        uint256 accRewardPerShare; // Accumulated Reward Token per share. See below.
         uint256 totalStaked; // total staked amount each campaign's stake token, typically, each campaign has the same stake token, so need to track it separatedly
         uint256 totalRewards;
     }
@@ -59,20 +60,20 @@ contract TokenFarm is Ownable, ReentrancyGuard {
         uint256 indexed campaignID,
         IBoringERC20 stakingToken,
         IBoringERC20 rewardToken,
-        uint256 startBlock
+        uint256 startTimestamp
     );
     event AddRewardInfo(
         uint256 indexed campaignID,
         uint256 indexed phase,
-        uint256 endBlock,
-        uint256 rewardPerBlock
+        uint256 endTimestamp,
+        uint256 rewardPerTimestamp
     );
     event SetRewardInfoLimit(uint256 rewardInfoLimit);
     event SetRewardHolder(address rewardHolder);
 
     // constructor
     constructor(address _rewardHolder) {
-        rewardInfoLimit = 52; // 52 weeks, 1 year
+        rewardInfoLimit = 53;
         rewardHolder = _rewardHolder;
     }
 
@@ -97,10 +98,20 @@ contract TokenFarm is Ownable, ReentrancyGuard {
         IBoringERC20 _rewardToken,
         uint256 _startTimestamp
     ) external onlyOwner {
+        uint256 decimalsRewardToken = uint256(_rewardToken.safeDecimals());
+
+        require(
+            decimalsRewardToken < 30,
+            "constructor: reward token decimals must be inferior to 30"
+        );
+
+        uint256 precision = uint256(10**(uint256(30) - (decimalsRewardToken)));
+
         campaignInfo.push(
             CampaignInfo({
                 stakingToken: _stakingToken,
                 rewardToken: _rewardToken,
+                precision: precision,
                 startTimestamp: _startTimestamp,
                 lastRewardTimestamp: _startTimestamp,
                 accRewardPerShare: 0,
@@ -177,15 +188,15 @@ contract TokenFarm is Ownable, ReentrancyGuard {
     }
 
     // @notice this will return  end block based on the current block timestamp.
-    function currentEndBlock(uint256 _campaignID)
+    function currentEndTimestamp(uint256 _campaignID)
         external
         view
         returns (uint256)
     {
-        return _endBlockOf(_campaignID, block.timestamp);
+        return _endTimestampOf(_campaignID, block.timestamp);
     }
 
-    function _endBlockOf(uint256 _campaignID, uint256 _blockTimestamp)
+    function _endTimestampOf(uint256 _campaignID, uint256 _blockTimestamp)
         internal
         view
         returns (uint256)
@@ -283,11 +294,13 @@ contract TokenFarm is Ownable, ReentrancyGuard {
                 if (multiplier == 0) continue;
                 cursor = rewardInfo[i].endTimestamp;
                 accRewardPerShare +=
-                    ((multiplier * rewardInfo[i].rewardPerSec) * 1e12) /
+                    ((multiplier * rewardInfo[i].rewardPerSec) *
+                        campaign.precision) /
                     campaign.totalStaked;
             }
         }
-        return ((_amount * accRewardPerShare) / 1e12) - _rewardDebt;
+        return
+            ((_amount * accRewardPerShare) / campaign.precision) - _rewardDebt;
     }
 
     function updateCampaign(uint256 _campaignID) external nonReentrant {
@@ -306,7 +319,9 @@ contract TokenFarm is Ownable, ReentrancyGuard {
             // so that ALL reward will be distributed.
             // however, if the first deposit is out of reward period, last reward block will be its block timestamp
             // in order to keep the multiplier = 0
-            if (block.timestamp > _endBlockOf(_campaignID, block.timestamp)) {
+            if (
+                block.timestamp > _endTimestampOf(_campaignID, block.timestamp)
+            ) {
                 campaign.lastRewardTimestamp = block.timestamp;
             }
             return;
@@ -315,22 +330,23 @@ contract TokenFarm is Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < rewardInfo.length; ++i) {
             // @dev get multiplier based on current Block and rewardInfo's end block
             // multiplier will be a range of either (current block - campaign.lastRewardBlock)
-            // or (reward info's endblock - campaign.lastRewardBlock) or 0
+            // or (reward info's endblock - campaign.lastRewardTimestamp) or 0
             uint256 multiplier = getMultiplier(
                 campaign.lastRewardTimestamp,
                 block.timestamp,
                 rewardInfo[i].endTimestamp
             );
             if (multiplier == 0) continue;
-            // @dev if currentBlock exceed end block, use end block as the last reward block
-            // so that for the next iteration, previous endBlock will be used as the last reward block
+            // @dev if currentTimestamp exceed end block, use end block as the last reward block
+            // so that for the next iteration, previous endTimestamp will be used as the last reward block
             if (block.timestamp > rewardInfo[i].endTimestamp) {
                 campaign.lastRewardTimestamp = rewardInfo[i].endTimestamp;
             } else {
                 campaign.lastRewardTimestamp = block.timestamp;
             }
             campaign.accRewardPerShare +=
-                ((multiplier * rewardInfo[i].rewardPerSec) * 1e12) /
+                ((multiplier * rewardInfo[i].rewardPerSec) *
+                    campaign.precision) /
                 campaign.totalStaked;
         }
     }
@@ -379,7 +395,7 @@ contract TokenFarm is Ownable, ReentrancyGuard {
         _updateCampaign(_campaignID);
         if (user.amount > 0) {
             uint256 pending = ((user.amount * campaign.accRewardPerShare) /
-                1e12) - user.rewardDebt;
+                campaign.precision) - user.rewardDebt;
             if (pending > 0) {
                 campaign.rewardToken.safeTransfer(address(msg.sender), pending);
             }
@@ -393,7 +409,9 @@ contract TokenFarm is Ownable, ReentrancyGuard {
             user.amount += _amount;
             campaign.totalStaked += _amount;
         }
-        user.rewardDebt = (user.amount * campaign.accRewardPerShare) / 1e12;
+        user.rewardDebt =
+            (user.amount * campaign.accRewardPerShare) /
+            campaign.precision;
         emit Deposit(msg.sender, _amount, _campaignID);
     }
 
@@ -411,8 +429,8 @@ contract TokenFarm is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_campaignID][msg.sender];
         require(user.amount >= _amount, "withdraw::bad withdraw amount");
         _updateCampaign(_campaignID);
-        uint256 pending = ((user.amount * campaign.accRewardPerShare) / 1e12) -
-            user.rewardDebt;
+        uint256 pending = ((user.amount * campaign.accRewardPerShare) /
+            campaign.precision) - user.rewardDebt;
         if (pending > 0) {
             campaign.rewardToken.safeTransfer(address(msg.sender), pending);
         }
@@ -421,7 +439,9 @@ contract TokenFarm is Ownable, ReentrancyGuard {
             campaign.stakingToken.safeTransfer(address(msg.sender), _amount);
             campaign.totalStaked -= _amount;
         }
-        user.rewardDebt = (user.amount * campaign.accRewardPerShare) / 1e12;
+        user.rewardDebt =
+            (user.amount * campaign.accRewardPerShare) /
+            campaign.precision;
 
         emit Withdraw(msg.sender, _amount, _campaignID);
     }
