@@ -19,19 +19,12 @@ contract SolarERC20 {
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
 
-    address private _trustedForwarder; // remember to change before deploying
-
-    // Control support for EIP-2771 Meta Transactions
-    bool public metaTxnsEnabled = false;
-
     event Approval(
         address indexed owner,
         address indexed spender,
         uint256 value
     );
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event MetaTxnsEnabled(address indexed caller);
-    event MetaTxnsDisabled(address indexed caller);
 
     constructor() public {
         uint256 chainId;
@@ -51,27 +44,12 @@ contract SolarERC20 {
         );
     }
 
-    function isTrustedForwarder(address forwarder) public view returns (bool) {
-        return metaTxnsEnabled && forwarder == _trustedForwarder;
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
     }
 
-    function _msgSender() internal view returns (address sender) {
-        if (isTrustedForwarder(msg.sender)) {
-            // The assembly code is more direct than the Solidity version using `abi.decode`.
-            assembly {
-                sender := shr(96, calldataload(sub(calldatasize(), 20)))
-            }
-        } else {
-            return msg.sender;
-        }
-    }
-
-    function _msgData() internal view returns (bytes calldata) {
-        if (isTrustedForwarder(msg.sender)) {
-            return msg.data[:msg.data.length - 20];
-        } else {
-            return msg.data;
-        }
+    function _msgData() internal pure virtual returns (bytes calldata) {
+        return msg.data;
     }
 
     function _mint(address to, uint256 value) internal {
