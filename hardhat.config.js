@@ -45,12 +45,31 @@ module.exports = {
         hardhat: {
             forking: {
                 enabled: true,
-                url: "https://rpc.moonriver.moonbeam.network",
-                blockNumber: 900000,
+                url: "https://ropsten.infura.io/v3/249b95cec9c541bf94a4333cc77e9b71",
             },
             live: false,
             saveDeployments: true,
             tags: ["test", "local"],
+        },
+        mainnet: {
+            url: `https://mainnet.infura.io/v3/249b95cec9c541bf94a4333cc77e9b71`,
+            chainId: 1,
+            accounts,
+            live: true,
+            saveDeployments: false,
+            tags: ["mainnet"],
+            gasPrice: 5000000000,
+            gas: 8000000,
+        },
+        rinkeby: {
+            url: `https://rinkeby.infura.io/v3/249b95cec9c541bf94a4333cc77e9b71`,
+            chainId: 4,
+            accounts,
+            live: true,
+            saveDeployments: false,
+            tags: ["rinkeby"],
+            gasPrice: 5000000000,
+            gas: 8000000,
         },
         moonriver: {
             url: `https://rpc.moonriver.moonbeam.network`,
@@ -74,8 +93,7 @@ module.exports = {
         },
     },
     solidity: {
-        compilers: [
-            {
+        compilers: [{
                 version: "0.6.12",
                 settings: {
                     optimizer: {
