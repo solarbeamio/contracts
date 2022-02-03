@@ -100,7 +100,7 @@ contract ComplexRewarderPerSecV2 is IComplexRewarder, Ownable, ReentrancyGuard {
     modifier onlyDistributorV2() {
         require(
             msg.sender == address(distributorV2),
-            "onlyDistributorV2: only SolarDistributorV2 can call this function"
+            "onlyDistributorV2: only DistributorV2 can call this function"
         );
         _;
     }

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../../farm/SolarVault.sol";
+import "../../solar/VestedSolarBeamToken.sol";
 import "./ICommonEclipseV2.sol";
 
 contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
@@ -20,11 +21,13 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
 
     SolarVault public vault;
 
-    uint8 public constant HARVEST_PERIODS = 4; // number of periods to split offering token to vest.
+    IVestedSolarBeamToken public vesolar;
+
+    uint8 public constant HARVEST_PERIODS = 6; // number of periods to split offering token to vest.
 
     uint8 public constant NUMBER_VAULT_POOLS = 3; // number of solar vault pools to check for stake.
 
-    uint8 public constant NUMBER_THRESHOLDS = 4; // number of solar staked threshold for multipliers per pool.
+    uint8 public constant NUMBER_THRESHOLDS = 3; // number of solar staked threshold for multipliers per pool.
 
     uint256[HARVEST_PERIODS] public harvestReleaseTimestamps;
     uint256[HARVEST_PERIODS] public harvestReleasePercent;
@@ -116,31 +119,34 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
 
     constructor(
         IERC20 _lpToken,
-        IERC20 _offeringToken,
         uint256 _startTimestamp,
         uint256 _endTimestamp,
         uint256 _eligibilityThreshold, // (1e18)
         address _solarVault,
+        address _vesolar,
         uint256[] memory _harvestReleasePercent,
         uint256[] memory _harvestReleaseTimestamps,
         bytes memory _multipliers
     ){
         require(_lpToken.totalSupply() > 0);
-        require(_offeringToken.totalSupply() > 0);
-        require(_lpToken != _offeringToken, "Tokens must be different");
-
         lpToken = _lpToken;
-        offeringToken = _offeringToken;
         startTimestamp = _startTimestamp;
         endTimestamp = _endTimestamp;
         eligibilityThreshold = _eligibilityThreshold;
         vault = SolarVault(_solarVault);
+        vesolar = IVestedSolarBeamToken(_vesolar);
 
         _setMultipliers(_multipliers);
 
         _setHarvest(HARVEST_TYPE.TIMESTAMP, _harvestReleaseTimestamps );
         _setHarvest(HARVEST_TYPE.PERCENT, _harvestReleasePercent );
 
+    }
+
+    function setOfferingToken(IERC20 _offeringToken) external onlyOwner {        
+        require(_offeringToken.totalSupply() > 0);
+        require(lpToken != _offeringToken, "Tokens must be different");
+        offeringToken = _offeringToken;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -159,17 +165,16 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
    
     function _setHarvest(HARVEST_TYPE _type, uint256[] memory _input) internal {
         if ( _type == HARVEST_TYPE.TIMESTAMP ) {
-            harvestReleaseTimestamps[0] = endTimestamp;
-        for (uint256 i = 1; i < HARVEST_PERIODS; i++) {
-            harvestReleaseTimestamps[i] = _input[i];
-        }
+            for (uint256 i = 0; i < HARVEST_PERIODS; i++) {
+                harvestReleaseTimestamps[i] = _input[i];
+            }
         } else if ( _type == HARVEST_TYPE.PERCENT ) {
             uint256 totalPercent;
-        for (uint256 i = 0; i < HARVEST_PERIODS; i++) {
-            harvestReleasePercent[i] = _input[i];
-            totalPercent += _input[i];
-        }
-        require(totalPercent == 10000, "harvest percent must total 10000");
+            for (uint256 i = 0; i < HARVEST_PERIODS; i++) {
+                harvestReleasePercent[i] = _input[i];
+                totalPercent += _input[i];
+            }
+            require(totalPercent == 10000, "harvest percent must total 10000");
         }
     }
     /**
@@ -352,7 +357,7 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
           }
         }
 
-        (bool success) = _getEligibility();
+        (bool success) = _getEligibility(msg.sender);
         require(success, "user not eligible");
 
         uint256 beforeDeposit = lpToken.balanceOf(address(this));
@@ -380,15 +385,27 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
 
     }
 
-    function _getEligibility() public view returns(bool) {
+    function getUserEligibility(address _user) public view returns(bool) {
+        return _getEligibility(_user);
+    }
+
+    function _getEligibility(address _user) internal view returns(bool) {
         uint256 amount;
 
+        //veSOLAR support
+        uint256 vesolarAmount = vesolar.userLockedAmount(_user);
+        if (vesolarAmount >= eligibilityThreshold) {
+            return true;
+        }       
+        //veSOLAR support
+
         for (uint256 i=0; i<NUMBER_VAULT_POOLS; i++) {
-            (amount,,,,) = vault.userInfo(i,msg.sender);
-            if(amount >= eligibilityThreshold) {
+            (amount,,,,) = vault.userInfo(i,_user);
+            if (amount >= eligibilityThreshold) {
                 return true;
-            }
+            }            
         }
+
         return false;
     }
 
@@ -396,8 +413,27 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
         uint16 userMult;
         uint16 mult;
         uint256 amount;
+
+        //veSOLAR support
+        uint256 vesolarAmount = vesolar.userLockedAmount(_user);        
+        uint256 vesolarLockedUntil = vesolar.userLockedUntil(_user);
+        uint256 daysLeft = (vesolarLockedUntil - block.timestamp) / (60*60*24);        
+
         for (uint8 i=0; i<NUMBER_VAULT_POOLS; i++) {
-            (amount,,,,) = vault.userInfo(i,_user);
+            uint256 _veAmount = (i == 0 || i == 1 && daysLeft >= 7 || i == 2 && daysLeft >= 30) ? vesolarAmount : 0;
+            for (uint8 j=0; j<NUMBER_THRESHOLDS; j++) {
+                mult = uint16(_multiplierInfo.poolBaseMult[i]) * uint16(_multiplierInfo.poolMultipliers[i][j]);
+                if(_veAmount >= uint256(_multiplierInfo.poolThresholds[j])*1e18) {
+                    if(mult > userMult) {
+                        userMult = mult;
+                    }
+                }
+            }
+        }
+        //veSOLAR support
+
+        for (uint8 i=0; i<NUMBER_VAULT_POOLS; i++) {
+            (amount,,,,) = vault.userInfo(i,_user);    
             for (uint8 j=0; j<NUMBER_THRESHOLDS; j++) {
                 mult = uint16(_multiplierInfo.poolBaseMult[i]) * uint16(_multiplierInfo.poolMultipliers[i][j]);
                 if(amount >= uint256(_multiplierInfo.poolThresholds[j])*1e18) {
@@ -442,9 +478,55 @@ contract CommonEclipseV2 is ICommonEclipseV2, ReentrancyGuard, Ownable {
             poolInfo[_pid].totalAllocPoints += userInfo[msg.sender][_pid].allocPoints;
         }
 
-        lpToken.safeTransferFrom(address(this), address(msg.sender), _amount);
+        lpToken.safeTransfer(address(msg.sender), _amount);
 
         emit Withdraw(msg.sender, _amount, _pid);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            HARVEST LOGIC
+    //////////////////////////////////////////////////////////////*/
+    function userHasRefund(uint8 _pid, address _user) external view returns(bool) {
+        if (_pid < numberPools && userInfo[_user][_pid].amount > 0){
+            uint256 refundingTokenAmount;
+
+            (, refundingTokenAmount,) = _calcOfferingAndRefundingAmounts(
+                _user,
+                _pid
+            );
+
+            if (refundingTokenAmount > 0) {
+                return true;
+            }
+        }      
+        return false;
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            HARVEST LOGIC
+    //////////////////////////////////////////////////////////////*/
+    function claimRefund(uint8 _pid) external nonReentrant onlyFinished {
+        require(_pid < numberPools, "pool does not exist");
+        require(userInfo[msg.sender][_pid].amount > 0, "did not participate");
+        require(!userInfo[msg.sender][_pid].isRefunded, "already refunded");
+
+        userInfo[msg.sender][_pid].isRefunded = true;
+
+        uint256 refundingTokenAmount;
+        uint256 userTaxOverflow;
+
+        (, refundingTokenAmount, userTaxOverflow) = _calcOfferingAndRefundingAmounts(
+            msg.sender,
+            _pid
+        );
+
+        if (userTaxOverflow > 0) {
+            poolInfo[_pid].sumTaxesOverflow += userTaxOverflow;
+        }
+        
+        if (refundingTokenAmount > 0) {
+            lpToken.safeTransfer(address(msg.sender), refundingTokenAmount);
+        }
     }
 
     /*///////////////////////////////////////////////////////////////
