@@ -17,7 +17,7 @@ describe("SolarDistributorV2", function () {
         this.SolarDistributorV2 = await ethers.getContractFactory("SolarDistributorV2");
         this.SolarBeamToken = await ethers.getContractFactory("MockERC20");
         this.ERC20Mock = await ethers.getContractFactory("MockERC20", this.minter);
-        this.ComplexRewarderPerSec = await ethers.getContractFactory("ComplexRewarderPerSecV2");
+        this.ComplexRewarderPerSec = await ethers.getContractFactory("ComplexRewarderPerSecV3");
 
         // this.ERC20Mock = await ethers.getContractFactory("ERC20Mock", this.minter);
         // this.SushiToken = await ethers.getContractFactory("SushiToken");
@@ -328,219 +328,219 @@ describe("SolarDistributorV2", function () {
             await this.lp2.transfer(this.carol.address, "1000");
         });
 
-        it("should decrease partner token amount after decreasing rewardPerSec", async function () {
-            this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
-            await this.sdv2.deployed();
-            await this.sdv2.startFarming();
+        // it("should decrease partner token amount after decreasing rewardPerSec", async function () {
+        //     this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
+        //     await this.sdv2.deployed();
+        //     await this.sdv2.startFarming();
 
-            this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
-            await this.rewarder.deployed();
-            await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
+        //     this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
+        //     await this.rewarder.deployed();
+        //     await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
 
-            await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
+        //     await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
 
-            //deposit for bob
-            await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.bob).deposit(0, "100");
+        //     //deposit for bob
+        //     await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.bob).deposit(0, "100");
 
-            //deposit for alice
-            await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.alice).deposit(0, "100");
+        //     //deposit for alice
+        //     await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.alice).deposit(0, "100");
 
-            const starting = await latest();
-            await this.rewarder.add(0, "100", starting.add(3)); //+1 - T = 0
+        //     const starting = await latest();
+        //     await this.rewarder.add(0, starting.add(3)); //+1 - T = 0
 
-            await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
+        //     await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
 
-            //add 40 * 2 = 80 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
+        //     //add 40 * 2 = 80 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
 
-            await this.rewarder.setRewardInfo(0, 0, starting.add(5), this.partnerRewardPerSec / 2, this.treasury.address); //+3 - ET = T + 2 = 2
+        //     await this.rewarder.setRewardInfo(0, 0, starting.add(5), this.partnerRewardPerSec / 2, this.treasury.address); //+3 - ET = T + 2 = 2
 
-            //add 20 * 2 = 40 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(40);
+        //     //add 20 * 2 = 40 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(40);
 
-            //refund 40
-            expect(await this.partnerToken.balanceOf(this.treasury.address)).to.equal(40);
+        //     //refund 40
+        //     expect(await this.partnerToken.balanceOf(this.treasury.address)).to.equal(40);
 
-            await advanceTimeAndBlock(1); //Bob = T+1 <= ET = (80 / 2) * (ET - T+1) = (40 / 2) * (1) = 10
-            await advanceTimeAndBlock(1); //Bob = T+2 <= ET = (80 / 2) * (ET - T+2) = (40 / 2) * (2) = 20
-            await advanceTimeAndBlock(1); //Bob = T+3 > ET = 20
-            await advanceTimeAndBlock(1); //Bob = T+4 > ET = 20
+        //     await advanceTimeAndBlock(1); //Bob = T+1 <= ET = (80 / 2) * (ET - T+1) = (40 / 2) * (1) = 10
+        //     await advanceTimeAndBlock(1); //Bob = T+2 <= ET = (80 / 2) * (ET - T+2) = (40 / 2) * (2) = 20
+        //     await advanceTimeAndBlock(1); //Bob = T+3 > ET = 20
+        //     await advanceTimeAndBlock(1); //Bob = T+4 > ET = 20
 
-            // Bob should have:
-            //   - 0 SolarBeamToken
-            //   - 20 PartnerToken
-            // Alice should have:
-            //   - 0 SolarBeamToken
-            //   - 20 PartnerToken pending
-            await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
-            expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(20);
-            expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(20);
-        });
+        //     // Bob should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 20 PartnerToken
+        //     // Alice should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 20 PartnerToken pending
+        //     await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
+        //     expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(20);
+        //     expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(20);
+        // });
 
-        it("should increase partner token amount after increasing rewardPerSec", async function () {
-            this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
-            await this.sdv2.deployed();
-            await this.sdv2.startFarming();
+        // it("should increase partner token amount after increasing rewardPerSec", async function () {
+        //     this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
+        //     await this.sdv2.deployed();
+        //     await this.sdv2.startFarming();
 
-            this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
-            await this.rewarder.deployed();
-            await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
+        //     this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
+        //     await this.rewarder.deployed();
+        //     await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
 
-            await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
+        //     await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
 
-            //deposit for bob
-            await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.bob).deposit(0, "100");
+        //     //deposit for bob
+        //     await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.bob).deposit(0, "100");
 
-            //deposit for alice
-            await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.alice).deposit(0, "100");
+        //     //deposit for alice
+        //     await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.alice).deposit(0, "100");
 
-            const starting = await latest();
-            await this.rewarder.add(0, "100", starting.add(3)); //+1 - T = 0
+        //     const starting = await latest();
+        //     await this.rewarder.add(0, starting.add(3)); //+1 - T = 0
 
-            await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
+        //     await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
 
-            //add 40 * 2 = 80 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
+        //     //add 40 * 2 = 80 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
 
-            await this.rewarder.setRewardInfo(0, 0, starting.add(5), this.partnerRewardPerSec * 2, this.deployer.address); //+3 - ET = T + 2 = 2
+        //     await this.rewarder.setRewardInfo(0, 0, starting.add(5), this.partnerRewardPerSec * 2, this.deployer.address); //+3 - ET = T + 2 = 2
 
-            //add 80 * 2 = 160 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(160);
+        //     //add 80 * 2 = 160 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(160);
 
-            await advanceTimeAndBlock(1); //Bob = T+1 <= ET = (80 / 2) * (ET - T+1) = (80 / 2) * (1) = 40
-            await advanceTimeAndBlock(1); //Bob = T+2 <= ET = (80 / 2) * (ET - T+2) = (80 / 2) * (2) = 80
-            await advanceTimeAndBlock(1); //Bob = T+3 > ET = 80
-            await advanceTimeAndBlock(1); //Bob = T+4 > ET = 80
+        //     await advanceTimeAndBlock(1); //Bob = T+1 <= ET = (80 / 2) * (ET - T+1) = (80 / 2) * (1) = 40
+        //     await advanceTimeAndBlock(1); //Bob = T+2 <= ET = (80 / 2) * (ET - T+2) = (80 / 2) * (2) = 80
+        //     await advanceTimeAndBlock(1); //Bob = T+3 > ET = 80
+        //     await advanceTimeAndBlock(1); //Bob = T+4 > ET = 80
 
-            // Bob should have:
-            //   - 0 SolarBeamToken
-            //   - 80 PartnerToken
-            // Alice should have:
-            //   - 0 SolarBeamToken
-            //   - 80 PartnerToken pending
-            await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
-            expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(80);
-            expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(80);
-        });
+        //     // Bob should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 80 PartnerToken
+        //     // Alice should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 80 PartnerToken pending
+        //     await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
+        //     expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(80);
+        //     expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(80);
+        // });
 
-        it("should increase partner token amount and endTimestamp after increasing rewardPerSec and endTimestamp during active rewardInfo", async function () {
-            this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
-            await this.sdv2.deployed();
-            await this.sdv2.startFarming();
+        // it("should increase partner token amount and endTimestamp after increasing rewardPerSec and endTimestamp during active rewardInfo", async function () {
+        //     this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
+        //     await this.sdv2.deployed();
+        //     await this.sdv2.startFarming();
 
-            this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
-            await this.rewarder.deployed();
-            await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
+        //     this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
+        //     await this.rewarder.deployed();
+        //     await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
 
-            await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
+        //     await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
 
-            //deposit for bob
-            await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.bob).deposit(0, "100");
+        //     //deposit for bob
+        //     await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.bob).deposit(0, "100");
 
-            //deposit for alice
-            await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.alice).deposit(0, "100");
+        //     //deposit for alice
+        //     await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.alice).deposit(0, "100");
 
-            const starting = await latest();
-            await this.rewarder.add(0, "100", starting.add(2)); //+1 - T = 0
-            // console.log("ts: %s - starting on: %s", (await latest()).toNumber(), starting.add(2).toNumber());
+        //     const starting = await latest();
+        //     await this.rewarder.add(0, starting.add(2)); //+1 - T = 0
+        //     // console.log("ts: %s - starting on: %s", (await latest()).toNumber(), starting.add(2).toNumber());
 
-            await this.rewarder.addRewardInfo(0, starting.add(4), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
+        //     await this.rewarder.addRewardInfo(0, starting.add(4), this.partnerRewardPerSec); //+2 - ET = T + 2 = 2
 
-            //add 40 * 2 = 80 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
+        //     //add 40 * 2 = 80 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
 
-            await advanceTimeAndBlock(1); //+3 - Bob = T+1 <= ET = (40 / 2) * (ET - T+1) = (40 / 2) * (1) = 20
+        //     await advanceTimeAndBlock(1); //+3 - Bob = T+1 <= ET = (40 / 2) * (ET - T+1) = (40 / 2) * (1) = 20
 
-            //still 1s to end
-            //timeRange = 4 - 3;
-            //pendingRewards = 1 * 40;
-            //newTimeRange = 10 - 3;
-            //newPendingRewards = 7 * 40;
-            //for this timeRange (7s) we need (7 * 40) tokens in total and we have already 40 tokens
-            //280 tokens - 40 tokens = +240 - total in rewarder address will be (80 pending + 240) = 320
-            await this.rewarder.setRewardInfo(0, 0, starting.add(10), this.partnerRewardPerSec, this.deployer.address); //+4
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(320);
+        //     //still 1s to end
+        //     //timeRange = 4 - 3;
+        //     //pendingRewards = 1 * 40;
+        //     //newTimeRange = 10 - 3;
+        //     //newPendingRewards = 7 * 40;
+        //     //for this timeRange (7s) we need (7 * 40) tokens in total and we have already 40 tokens
+        //     //280 tokens - 40 tokens = +240 - total in rewarder address will be (80 pending + 240) = 320
+        //     await this.rewarder.setRewardInfo(0, 0, starting.add(10), this.partnerRewardPerSec, this.deployer.address); //+4
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(320);
 
-            await advanceTimeAndBlock(1); //+5 - Bob = T+3 <= ET = (40 / 2) * (ET - T+3) = 20 * (3) = 60
-            await advanceTimeAndBlock(1); //+6 - Bob = T+4 <= ET = (40 / 2) * (ET - T+4) = 20 * (4) = 80
-            await advanceTimeAndBlock(1); //+7 - Bob = T+5 <= ET = (40 / 2) * (ET - T+5) = 20 * (5) = 100
-            await advanceTimeAndBlock(1); //+8 - Bob = T+6 <= ET = (40 / 2) * (ET - T+6) = 20 * (6) = 120
-            await advanceTimeAndBlock(1); //+9 - Bob = T+7 <= ET = (40 / 2) * (ET - T+7) = 20 * (7) = 140
-            await advanceTimeAndBlock(1); //+10 - Bob = T+8 <= ET = (40 / 2) * (ET - T+8) = 20 * (8) = 160
-            await advanceTimeAndBlock(1); //+11 - Bob = T+9 > ET = 160
+        //     await advanceTimeAndBlock(1); //+5 - Bob = T+3 <= ET = (40 / 2) * (ET - T+3) = 20 * (3) = 60
+        //     await advanceTimeAndBlock(1); //+6 - Bob = T+4 <= ET = (40 / 2) * (ET - T+4) = 20 * (4) = 80
+        //     await advanceTimeAndBlock(1); //+7 - Bob = T+5 <= ET = (40 / 2) * (ET - T+5) = 20 * (5) = 100
+        //     await advanceTimeAndBlock(1); //+8 - Bob = T+6 <= ET = (40 / 2) * (ET - T+6) = 20 * (6) = 120
+        //     await advanceTimeAndBlock(1); //+9 - Bob = T+7 <= ET = (40 / 2) * (ET - T+7) = 20 * (7) = 140
+        //     await advanceTimeAndBlock(1); //+10 - Bob = T+8 <= ET = (40 / 2) * (ET - T+8) = 20 * (8) = 160
+        //     await advanceTimeAndBlock(1); //+11 - Bob = T+9 > ET = 160
 
-            // Bob should have:
-            //   - 0 SolarBeamToken
-            //   - 160 PartnerToken
-            // Alice should have:
-            //   - 0 SolarBeamToken
-            //   - 160 PartnerToken pending
-            await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
-            expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(160);
-            expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(160);
-        });
+        //     // Bob should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 160 PartnerToken
+        //     // Alice should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 160 PartnerToken pending
+        //     await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
+        //     expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(160);
+        //     expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(160);
+        // });
 
-        it("should decrease partner token amount and endTimestamp after decreasing endTimestamp during active rewardInfo", async function () {
-            this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
-            await this.sdv2.deployed();
-            await this.sdv2.startFarming();
+        // it("should decrease partner token amount and endTimestamp after decreasing endTimestamp during active rewardInfo", async function () {
+        //     this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
+        //     await this.sdv2.deployed();
+        //     await this.sdv2.startFarming();
 
-            this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
-            await this.rewarder.deployed();
-            await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
+        //     this.rewarder = await this.ComplexRewarderPerSec.deploy(this.partnerToken.address, this.sdv2.address, false);
+        //     await this.rewarder.deployed();
+        //     await this.partnerToken.connect(this.deployer).approve(this.rewarder.address, "1000");
 
-            await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
+        //     await this.sdv2.add("100", this.lp.address, 0, 15, [this.rewarder.address]);
 
-            //deposit for bob
-            await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.bob).deposit(0, "100");
+        //     //deposit for bob
+        //     await this.lp.connect(this.bob).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.bob).deposit(0, "100");
 
-            //deposit for alice
-            await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
-            await this.sdv2.connect(this.alice).deposit(0, "100");
+        //     //deposit for alice
+        //     await this.lp.connect(this.alice).approve(this.sdv2.address, "1000");
+        //     await this.sdv2.connect(this.alice).deposit(0, "100");
 
-            const starting = await latest();
-            await this.rewarder.add(0, "100", starting.add(2)); //+1 - T = 0
-            // console.log("ts: %s - starting on: %s", (await latest()).toNumber(), starting.add(2).toNumber());
+        //     const starting = await latest();
+        //     await this.rewarder.add(0, starting.add(2)); //+1 - T = 0
+        //     // console.log("ts: %s - starting on: %s", (await latest()).toNumber(), starting.add(2).toNumber());
 
-            await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 3 = 3
+        //     await this.rewarder.addRewardInfo(0, starting.add(5), this.partnerRewardPerSec); //+2 - ET = T + 3 = 3
 
-            //add 40 * 3 = 120 tokens as reward
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(120);
+        //     //add 40 * 3 = 120 tokens as reward
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(120);
 
-            await advanceTimeAndBlock(1); //+3 - Bob = T+1 <= ET = (40 / 2) * (ET - T+1) = (40 / 2) * (1) = 20
+        //     await advanceTimeAndBlock(1); //+3 - Bob = T+1 <= ET = (40 / 2) * (ET - T+1) = (40 / 2) * (1) = 20
 
-            //still 2s to end
-            //decreasing 1s
-            //timeRange = 5 - 3;
-            //pendingRewards = 2 * 40;
-            //newTimeRange = 4 - 3;
-            //newPendingRewards = 1 * 40;
-            //for this timeRange (1s) we will need  (40) tokens in total and we have already 80 tokens
-            //it should refund in 40 tokens and stop giving tokens
-            await this.rewarder.setRewardInfo(0, 0, starting.add(4), this.partnerRewardPerSec, this.treasury.address); //+4
-            expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
-            expect(await this.partnerToken.balanceOf(this.treasury.address)).to.equal(40);
+        //     //still 2s to end
+        //     //decreasing 1s
+        //     //timeRange = 5 - 3;
+        //     //pendingRewards = 2 * 40;
+        //     //newTimeRange = 4 - 3;
+        //     //newPendingRewards = 1 * 40;
+        //     //for this timeRange (1s) we will need  (40) tokens in total and we have already 80 tokens
+        //     //it should refund in 40 tokens and stop giving tokens
+        //     await this.rewarder.setRewardInfo(0, 0, starting.add(4), this.partnerRewardPerSec, this.treasury.address); //+4
+        //     expect(await this.partnerToken.balanceOf(this.rewarder.address)).to.equal(80);
+        //     expect(await this.partnerToken.balanceOf(this.treasury.address)).to.equal(40);
 
-            await advanceTimeAndBlock(1); //+5 - Bob = T+3 > ET = 40
-            await advanceTimeAndBlock(1); //+6 - Bob = T+4 > ET = 40
+        //     await advanceTimeAndBlock(1); //+5 - Bob = T+3 > ET = 40
+        //     await advanceTimeAndBlock(1); //+6 - Bob = T+4 > ET = 40
 
-            // Bob should have:
-            //   - 0 SolarBeamToken
-            //   - 40 PartnerToken
-            // Alice should have:
-            //   - 0 SolarBeamToken
-            //   - 40 PartnerToken pending
-            await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
-            expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(40);
-            expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(40);
-        });
+        //     // Bob should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 40 PartnerToken
+        //     // Alice should have:
+        //     //   - 0 SolarBeamToken
+        //     //   - 40 PartnerToken pending
+        //     await this.sdv2.connect(this.bob).deposit(0, 0); //T+5
+        //     expect(await this.partnerToken.balanceOf(this.bob.address)).to.equal(40);
+        //     expect(await this.rewarder.pendingTokens("0", this.alice.address)).to.equal(40);
+        // });
 
         it("should reward partner token accurately with 1 reward info after rewards run out", async function () {
             this.sdv2 = await this.SolarDistributorV2.deploy(this.solar.address, this.solarPerSec, this.dev.address, this.treasury.address, this.investor.address, this.devPercent, this.treasuryPercent, this.investorPercent);
@@ -562,7 +562,7 @@ describe("SolarDistributorV2", function () {
             await this.sdv2.connect(this.alice).deposit(0, "100");
 
             const starting = await latest();
-            await this.rewarder.add(0, "100", starting.add(2)); //T = 0
+            await this.rewarder.add(0, starting.add(2)); //T = 0
 
             await this.rewarder.addRewardInfo(0, starting.add(12), this.partnerRewardPerSec); //ET = T + 10 = 10
 

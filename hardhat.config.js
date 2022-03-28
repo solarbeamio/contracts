@@ -44,7 +44,7 @@ module.exports = {
     networks: {
         hardhat: {
             forking: {
-                enabled: true,
+                enabled: false,
                 url: "https://ropsten.infura.io/v3/249b95cec9c541bf94a4333cc77e9b71",
             },
             live: false,
@@ -72,17 +72,17 @@ module.exports = {
             gas: 8000000,
         },
         moonriver: {
-            url: `https://rpc.moonriver.moonbeam.network`,
+            url: `https://rpc.api.moonriver.moonbeam.network`,
             chainId: 1285,
             accounts,
             live: true,
             saveDeployments: true,
             tags: ["moonriver"],
-            gasPrice: 5000000000,
+            gasPrice: 10000000000,
             gas: 8000000,
         },
         moonbase: {
-            url: `https://rpc.testnet.moonbeam.network`,
+            url: `https://moonbeam-alpha.api.onfinality.io/public`,
             chainId: 1287,
             accounts,
             live: true,
