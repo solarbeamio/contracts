@@ -82,7 +82,7 @@ module.exports = {
             gas: 8000000,
         },
         moonbase: {
-            url: `https://moonbeam-alpha.api.onfinality.io/public`,
+            url: `https://rpc.api.moonbase.moonbeam.network`,
             chainId: 1287,
             accounts,
             live: true,

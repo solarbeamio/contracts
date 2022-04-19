@@ -504,12 +504,9 @@ contract ComplexRewarderPerSecV4 is IComplexRewarder, Ownable, ReentrancyGuard {
 
     /// @notice Withdraw reward. EMERGENCY ONLY.
     function emergencyWithdraw(
-        uint256 _pid,
         uint256 _amount,
         address _beneficiary
     ) external onlyOwner nonReentrant {
-        PoolInfo storage pool = poolInfo[_pid];
-        pool.totalRewards -= _amount;
 
         if (!isNative) {
             rewardToken.safeTransfer(_beneficiary, _amount);
